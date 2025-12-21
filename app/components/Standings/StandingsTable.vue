@@ -1,3 +1,10 @@
+<script setup lang="ts">
+// กำหนด Props รับข้อมูล
+defineProps<{
+  standings: any[]
+}>();
+</script>
+
 <template>
   <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     
@@ -88,9 +95,3 @@
   </div>
 </template>
 
-<script setup lang="ts">
-// กำหนด Props รับข้อมูล
-defineProps<{
-  standings: any[]
-}>();
-</script>

@@ -1,105 +1,110 @@
 <script setup lang="ts">
-const props = withDefaults(
-  defineProps<{
-    modelValue?: string | Date
-  }>(),
-  {
-    modelValue: () => new Date()
-  }
-)
+type ModelValue = string | Date
+
+const props = withDefaults(defineProps<{ modelValue?: ModelValue }>(), {
+  modelValue: () => new Date(),
+})
 
 const emit = defineEmits<{
-  'update:modelValue': [string]
+  (e: 'update:modelValue', value: string): void
 }>()
 
-const currentDate = ref(
-  props.modelValue instanceof Date
-    ? props.modelValue
-    : new Date(props.modelValue || new Date())
-)
+/** ---------- date utils (timezone-safe) ---------- */
+const pad2 = (n: number) => String(n).padStart(2, '0')
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
 
-// เดือนที่กำลังโชว์ใน popup (fix เป็นวันที่ 1)
+function normalize(d: Date) {
+  const nd = new Date(d)
+  nd.setHours(0, 0, 0, 0)
+  return nd
+}
+
+function toYmdLocal(date: Date) {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`
+}
+
+function parseYmdLocal(value: string) {
+  const [y, m, d] = value.split('-').map(Number)
+  return normalize(new Date(y, (m || 1) - 1, d || 1))
+}
+
+function asDate(val: ModelValue | undefined) {
+  if (!val) return normalize(new Date())
+  if (val instanceof Date) return normalize(val)
+  if (!YMD_RE.test(val)) return normalize(new Date())
+  return parseYmdLocal(val)
+}
+
+function startOfMonth(d: Date) {
+  const nd = new Date(d)
+  nd.setDate(1)
+  nd.setHours(0, 0, 0, 0)
+  return nd
+}
+
+function daysInMonth(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
+}
+
+function isSameDate(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+}
+
+/** ---------- state ---------- */
+const currentDate = ref(asDate(props.modelValue))
 const calendarMonth = ref(startOfMonth(currentDate.value))
-
-// โหมดแสดง popup: วัน / เดือน / ปี
 const viewMode = ref<'day' | 'month' | 'year'>('day')
-
 const showPicker = ref(false)
 
 watch(
   () => props.modelValue,
   (val) => {
-    if (!val) return
-    const d = val instanceof Date ? val : new Date(val)
+    const d = asDate(val)
     currentDate.value = d
     calendarMonth.value = startOfMonth(d)
   }
 )
 
-// ---------- ข้อมูลภาษาไทย ----------
-
+/** ---------- thai labels ---------- */
 const thaiMonths = [
-  'มกราคม',
-  'กุมภาพันธ์',
-  'มีนาคม',
-  'เมษายน',
-  'พฤษภาคม',
-  'มิถุนายน',
-  'กรกฎาคม',
-  'สิงหาคม',
-  'กันยายน',
-  'ตุลาคม',
-  'พฤศจิกายน',
-  'ธันวาคม'
-]
+  'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+  'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม',
+] as const
 
-const thaiWeekdaysShort = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส']
+const thaiWeekdaysShort = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'] as const
 
-// แสดงวันที่ในแคปซูลกลาง
 const displayFormatter = new Intl.DateTimeFormat('th-TH', {
   weekday: 'long',
   day: 'numeric',
   month: 'short',
-  year: 'numeric'
+  year: 'numeric',
 })
 
 const formattedDate = computed(() => {
   const d = currentDate.value
   const buddhistYear = d.getFullYear() + 543
-  const parts = displayFormatter.formatToParts(d)
-  return parts
-    .map((p) => (p.type === 'year' ? buddhistYear.toString() : p.value))
+  return displayFormatter
+    .formatToParts(d)
+    .map((p) => (p.type === 'year' ? String(buddhistYear) : p.value))
     .join('')
 })
 
-// label บนหัว popup (เปลี่ยนตาม viewMode)
 const yearCE = computed(() => calendarMonth.value.getFullYear())
 const yearBE = computed(() => yearCE.value + 543)
 
 const yearRange = computed(() => {
-  // ช่วงละ 12 ปี
   const base = yearCE.value - (yearCE.value % 12)
-  const start = base
-  const end = base + 11
-  return { start, end }
+  return { start: base, end: base + 11 }
 })
 
 const headerLabel = computed(() => {
   const m = calendarMonth.value.getMonth()
-  if (viewMode.value === 'day') {
-    return `${thaiMonths[m]} ${yearBE.value}`
-  }
-  if (viewMode.value === 'month') {
-    return `พ.ศ. ${yearBE.value}`
-  }
-  // viewMode === 'year'
-  const startBE = yearRange.value.start + 543
-  const endBE = yearRange.value.end + 543
-  return `${startBE} - ${endBE}`
+  if (viewMode.value === 'day') return `${thaiMonths[m]} ${yearBE.value}`
+  if (viewMode.value === 'month') return `พ.ศ. ${yearBE.value}`
+  return `${yearRange.value.start + 543} - ${yearRange.value.end + 543}`
 })
 
-// ---------- grid วัน ----------
-
+/** ---------- calendar cells ---------- */
 type CalendarCell = {
   date: Date | null
   isToday: boolean
@@ -108,114 +113,78 @@ type CalendarCell = {
 }
 
 const weeks = computed<CalendarCell[][]>(() => {
-  const start = startOfMonth(calendarMonth.value)
-  const firstDay = start.getDay()
-  const daysInMonth = getDaysInMonth(start)
+  const monthStart = startOfMonth(calendarMonth.value)
+  const firstDay = monthStart.getDay()
+  const dim = daysInMonth(monthStart)
 
   const cells: CalendarCell[] = []
-
   for (let i = 0; i < firstDay; i++) {
-    cells.push({
-      date: null,
-      isToday: false,
-      isCurrentMonth: false,
-      isSelected: false
-    })
+    cells.push({ date: null, isToday: false, isCurrentMonth: false, isSelected: false })
   }
 
-  for (let day = 1; day <= daysInMonth; day++) {
-    const d = new Date(start)
+  const today = normalize(new Date())
+  for (let day = 1; day <= dim; day++) {
+    const d = new Date(monthStart)
     d.setDate(day)
-    const today = isSameDate(d, new Date())
-    const selected = isSameDate(d, currentDate.value)
     cells.push({
       date: d,
-      isToday: today,
+      isToday: isSameDate(d, today),
       isCurrentMonth: true,
-      isSelected: selected
+      isSelected: isSameDate(d, currentDate.value),
     })
   }
 
   const rows: CalendarCell[][] = []
-  for (let i = 0; i < cells.length; i += 7) {
-    rows.push(cells.slice(i, i + 7))
-  }
+  for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7))
   return rows
 })
 
-// ---------- helper ----------
+const dayCells = computed(() => weeks.value.flat())
 
-function startOfMonth(d: Date): Date {
-  const nd = new Date(d)
-  nd.setDate(1)
-  nd.setHours(0, 0, 0, 0)
-  return nd
+/** ---------- actions ---------- */
+function closePicker() {
+  showPicker.value = false
+  viewMode.value = 'day'
 }
 
-function getDaysInMonth(d: Date): number {
-  const year = d.getFullYear()
-  const month = d.getMonth()
-  return new Date(year, month + 1, 0).getDate()
+function setDate(date: Date) {
+  const d = normalize(date)
+  currentDate.value = d
+  calendarMonth.value = startOfMonth(d)
+  emit('update:modelValue', toYmdLocal(d))
 }
-
-function isSameDate(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  )
-}
-
-// ---------- action แคปซูลด้านบน ----------
 
 function changeDay(offset: number) {
   const d = new Date(currentDate.value)
   d.setDate(d.getDate() + offset)
-  updateDate(d)
-  calendarMonth.value = startOfMonth(d)
-}
-
-function updateDate(date: Date) {
-  currentDate.value = date
-  emit('update:modelValue', date.toISOString().slice(0, 10))
+  setDate(d)
 }
 
 function openPicker() {
+  if (showPicker.value) return closePicker()
   calendarMonth.value = startOfMonth(currentDate.value)
   viewMode.value = 'day'
-  showPicker.value = !showPicker.value
+  showPicker.value = true
 }
 
-// ---------- action บน popup ----------
-
-// ลูกศรซ้าย/ขวา
 function changeCalendar(offset: number) {
   const d = new Date(calendarMonth.value)
-  if (viewMode.value === 'day') {
-    d.setMonth(d.getMonth() + offset)
-  } else if (viewMode.value === 'month') {
-    d.setFullYear(d.getFullYear() + offset)
-  } else {
-    // viewMode === 'year' → กระโดดทีละ 12 ปี
-    d.setFullYear(d.getFullYear() + offset * 12)
-  }
+  if (viewMode.value === 'day') d.setMonth(d.getMonth() + offset)
+  else if (viewMode.value === 'month') d.setFullYear(d.getFullYear() + offset)
+  else d.setFullYear(d.getFullYear() + offset * 12)
   calendarMonth.value = startOfMonth(d)
 }
 
-// คลิก label เพื่อสลับโหมด Day → Month → Year → Day
 function toggleViewMode() {
-  if (viewMode.value === 'day') viewMode.value = 'month'
-  else if (viewMode.value === 'month') viewMode.value = 'year'
-  else viewMode.value = 'day'
+  viewMode.value = viewMode.value === 'day' ? 'month' : viewMode.value === 'month' ? 'year' : 'day'
 }
 
 function selectDate(cell: CalendarCell) {
   if (!cell.date) return
-  updateDate(cell.date)
-  showPicker.value = false
+  setDate(cell.date)
+  closePicker()
 }
 
-// เลือกเดือนจาก grid เดือน
 function selectMonth(index: number) {
   const d = new Date(calendarMonth.value)
   d.setMonth(index)
@@ -223,33 +192,68 @@ function selectMonth(index: number) {
   viewMode.value = 'day'
 }
 
-// เลือกปีจาก grid ปี
 function selectYear(year: number) {
   const d = new Date(calendarMonth.value)
   d.setFullYear(year)
   calendarMonth.value = startOfMonth(d)
   viewMode.value = 'month'
 }
+
+/** ---------- outside click + ESC ---------- */
+const pickerRef = ref<HTMLElement | null>(null)
+
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') closePicker()
+}
+
+function onPointerDown(e: PointerEvent) {
+  if (!showPicker.value) return
+  const el = pickerRef.value
+  if (!el) return
+
+  // robust check
+  const path = typeof e.composedPath === 'function' ? e.composedPath() : []
+  const clickedInside = path.length ? path.includes(el) : el.contains(e.target as Node)
+
+  if (!clickedInside) closePicker()
+}
+
+watch(showPicker, (open) => {
+  if (!import.meta.client) return
+
+  if (open) {
+    window.addEventListener('keydown', onKeydown)
+    // capture=true กันเคสมี stopPropagation ข้างใน
+    window.addEventListener('pointerdown', onPointerDown, true)
+  } else {
+    window.removeEventListener('keydown', onKeydown)
+    window.removeEventListener('pointerdown', onPointerDown, true)
+  }
+})
+
+onBeforeUnmount(() => {
+  if (!import.meta.client) return
+  window.removeEventListener('keydown', onKeydown)
+  window.removeEventListener('pointerdown', onPointerDown, true)
+})
 </script>
 
 <template>
   <div class="flex w-full">
-    <div class="relative">
-      <!-- แคปซูลหลัก -->
+    <div ref="pickerRef" class="relative">
+      <!-- Capsule -->
       <div class="inline-flex items-center gap-3 rounded-full border border-slate-300 bg-white px-3 py-1 shadow-sm">
         <button type="button"
-          class="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition"
+          class="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100  hover:text-slate-700 transition"
           @click="changeDay(-1)">
           <Icon name="lucide:chevron-left" class="h-4 w-4" />
         </button>
 
         <button type="button"
-          class="relative flex items-center gap-2 rounded-full bg-slate-100 justify-center py-2 px-3 hover:bg-slate-200 transition"
+          class="relative flex items-center gap-2 rounded-full w-[220px] justify-center whitespace-nowrap bg-slate-100 py-2 px-3 hover:bg-slate-200 transition"
           @click="openPicker">
           <Icon name="lucide:calendar-days" class="h-5 w-5 text-menu-background" />
-          <span class="text-xs font-medium text-slate-700">
-            {{ formattedDate }}
-          </span>
+          <span class="text-xs font-medium text-slate-700 tabular-nums">{{ formattedDate }}</span>
         </button>
 
         <button type="button"
@@ -259,10 +263,10 @@ function selectYear(year: number) {
         </button>
       </div>
 
-      <!-- Popup ปฏิทิน -->
+      <!-- Popup -->
       <div v-if="showPicker" class="absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2">
         <div class="w-80 rounded-lg border border-slate-300 bg-white p-3 shadow-lg">
-          <!-- header: ลูกศร + label (คลิกเลือกโหมด) -->
+          <!-- Header -->
           <div class="mb-2 flex items-center justify-between">
             <button type="button"
               class="flex h-7 w-7 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"
@@ -282,30 +286,27 @@ function selectYear(year: number) {
             </button>
           </div>
 
-          <!-- โหมดวัน -->
+          <!-- Day -->
           <div v-if="viewMode === 'day'">
             <div class="mb-1 grid grid-cols-7 text-center text-xs text-slate-500">
               <span v-for="d in thaiWeekdaysShort" :key="d">{{ d }}</span>
             </div>
 
             <div class="grid grid-cols-7 gap-1 text-sm">
-              <button v-for="(cell, idx) in weeks.flat()" :key="idx" type="button"
-                class="h-8 w-8 rounded-full text-center leading-8 transition" :class="[
+              <button v-for="(cell, idx) in dayCells" :key="cell.date ? toYmdLocal(cell.date) : `blank-${idx}`"
+                type="button" class="h-8 w-8 rounded-full text-center leading-8 transition" :class="[
                   !cell.date && 'cursor-default',
                   cell.isCurrentMonth ? 'text-slate-800' : 'text-slate-400',
                   cell.isToday && 'ring-1 ring-orange-400',
-                  cell.isSelected &&
-                  'bg-orange-500 text-white hover:bg-orange-500',
-                  cell.date &&
-                  !cell.isSelected &&
-                  'hover:bg-slate-100 hover:text-slate-900'
+                  cell.isSelected && 'bg-orange-500 text-white hover:bg-orange-500',
+                  cell.date && !cell.isSelected && 'hover:bg-slate-100 hover:text-slate-900'
                 ]" :disabled="!cell.date" @click="selectDate(cell)">
                 <span v-if="cell.date">{{ cell.date.getDate() }}</span>
               </button>
             </div>
           </div>
 
-          <!-- โหมดเดือน -->
+          <!-- Month -->
           <div v-else-if="viewMode === 'month'" class="grid grid-cols-3 gap-2 text-sm">
             <button v-for="(m, index) in thaiMonths" :key="m" type="button"
               class="rounded-md px-2 py-2 text-center transition" :class="[
@@ -317,13 +318,11 @@ function selectYear(year: number) {
             </button>
           </div>
 
-          <!-- โหมดปี -->
+          <!-- Year -->
           <div v-else class="grid grid-cols-3 gap-2 text-sm">
             <button v-for="y in Array.from({ length: 12 }, (_, i) => yearRange.start + i)" :key="y" type="button"
               class="rounded-md px-2 py-2 text-center transition" :class="[
-                y === yearCE
-                  ? 'bg-orange-500 text-white'
-                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+                y === yearCE ? 'bg-orange-500 text-white' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
               ]" @click="selectYear(y)">
               {{ y + 543 }}
             </button>

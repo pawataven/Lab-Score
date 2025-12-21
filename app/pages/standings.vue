@@ -1,3 +1,43 @@
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+import StandingsTableVue from '~/components/Standings/StandingsTable.vue';
+
+// 1. State
+const selectedLeague = ref('epl');
+
+// 2. Mock Data: Leagues
+const leagues = [
+  { id: 'epl', name: 'Premier League', country: 'England', logo: 'https://media.api-sports.io/football/leagues/39.png' },
+  { id: 'laliga', name: 'La Liga', country: 'Spain', logo: 'https://media.api-sports.io/football/leagues/140.png' },
+  { id: 'bundes', name: 'Bundesliga', country: 'Germany', logo: 'https://media.api-sports.io/football/leagues/78.png' },
+  { id: 'seriea', name: 'Serie A', country: 'Italy', logo: 'https://media.api-sports.io/football/leagues/135.png' },
+  { id: 'ligue1', name: 'Ligue 1', country: 'France', logo: 'https://media.api-sports.io/football/leagues/61.png' },
+];
+
+// Computed: หาข้อมูลลีกที่เลือกอยู่
+const currentLeague = computed(() => leagues.find(l => l.id === selectedLeague.value));
+
+// 3. Mock Data: Standings (ข้อมูลตารางคะแนน)
+const mockStandings = [
+  { rank: 1, name: 'Liverpool', logo: 'https://media.api-sports.io/football/teams/40.png', played: 17, win: 13, draw: 3, lose: 1, goalsFor: 40, goalsAgainst: 17, goalsDiff: 23, points: 42, form: ['W','W','D','W','W'] },
+  { rank: 2, name: 'Arsenal', logo: 'https://media.api-sports.io/football/teams/42.png', played: 17, win: 10, draw: 5, lose: 2, goalsFor: 35, goalsAgainst: 16, goalsDiff: 19, points: 35, form: ['W','D','W','W','D'] },
+  { rank: 3, name: 'Nottm Forest', logo: 'https://media.api-sports.io/football/teams/65.png', played: 17, win: 10, draw: 4, lose: 3, goalsFor: 26, goalsAgainst: 17, goalsDiff: 9, points: 34, form: ['W','L','W','W','D'] },
+  { rank: 4, name: 'Chelsea', logo: 'https://media.api-sports.io/football/teams/49.png', played: 17, win: 9, draw: 5, lose: 3, goalsFor: 36, goalsAgainst: 22, goalsDiff: 14, points: 32, form: ['D','W','W','L','W'] },
+  { rank: 5, name: 'Newcastle', logo: 'https://media.api-sports.io/football/teams/34.png', played: 17, win: 9, draw: 4, lose: 4, goalsFor: 30, goalsAgainst: 18, goalsDiff: 12, points: 31, form: ['W','W','D','L','W'] },
+  // ... เพิ่มทีมอื่นๆ ต่อได้เลย
+];
+</script>
+
+<style scoped>
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+</style>
+
 <template>
   <div class="mx-auto max-w-7xl p-4 md:p-6 min-h-screen">
     
@@ -43,43 +83,3 @@
 
   </div>
 </template>
-
-<script setup lang="ts">
-import { ref, computed } from 'vue';
-import StandingsTableVue from '~/components/Standings/StandingsTable.vue';
-
-// 1. State
-const selectedLeague = ref('epl');
-
-// 2. Mock Data: Leagues
-const leagues = [
-  { id: 'epl', name: 'Premier League', country: 'England', logo: 'https://media.api-sports.io/football/leagues/39.png' },
-  { id: 'laliga', name: 'La Liga', country: 'Spain', logo: 'https://media.api-sports.io/football/leagues/140.png' },
-  { id: 'bundes', name: 'Bundesliga', country: 'Germany', logo: 'https://media.api-sports.io/football/leagues/78.png' },
-  { id: 'seriea', name: 'Serie A', country: 'Italy', logo: 'https://media.api-sports.io/football/leagues/135.png' },
-  { id: 'ligue1', name: 'Ligue 1', country: 'France', logo: 'https://media.api-sports.io/football/leagues/61.png' },
-];
-
-// Computed: หาข้อมูลลีกที่เลือกอยู่
-const currentLeague = computed(() => leagues.find(l => l.id === selectedLeague.value));
-
-// 3. Mock Data: Standings (ข้อมูลตารางคะแนน)
-const mockStandings = [
-  { rank: 1, name: 'Liverpool', logo: 'https://media.api-sports.io/football/teams/40.png', played: 17, win: 13, draw: 3, lose: 1, goalsFor: 40, goalsAgainst: 17, goalsDiff: 23, points: 42, form: ['W','W','D','W','W'] },
-  { rank: 2, name: 'Arsenal', logo: 'https://media.api-sports.io/football/teams/42.png', played: 17, win: 10, draw: 5, lose: 2, goalsFor: 35, goalsAgainst: 16, goalsDiff: 19, points: 35, form: ['W','D','W','W','D'] },
-  { rank: 3, name: 'Nottm Forest', logo: 'https://media.api-sports.io/football/teams/65.png', played: 17, win: 10, draw: 4, lose: 3, goalsFor: 26, goalsAgainst: 17, goalsDiff: 9, points: 34, form: ['W','L','W','W','D'] },
-  { rank: 4, name: 'Chelsea', logo: 'https://media.api-sports.io/football/teams/49.png', played: 17, win: 9, draw: 5, lose: 3, goalsFor: 36, goalsAgainst: 22, goalsDiff: 14, points: 32, form: ['D','W','W','L','W'] },
-  { rank: 5, name: 'Newcastle', logo: 'https://media.api-sports.io/football/teams/34.png', played: 17, win: 9, draw: 4, lose: 4, goalsFor: 30, goalsAgainst: 18, goalsDiff: 12, points: 31, form: ['W','W','D','L','W'] },
-  // ... เพิ่มทีมอื่นๆ ต่อได้เลย
-];
-</script>
-
-<style scoped>
-.scrollbar-hide::-webkit-scrollbar {
-    display: none;
-}
-.scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-}
-</style>
