@@ -26,9 +26,6 @@ function formatHHmm(iso: string) {
 // ----------------------
 // UI state
 // ----------------------
-const date = ref(fmtDate(new Date()))
-
-const selectedLeagues = ref<string[]>(["epl", "laliga", "seriea", "bundes", "thaileague"])
 
 const leaguesUI = [
   { id: "epl", name: "Premier League", logo: "https://media.api-sports.io/football/leagues/39.png" },
@@ -38,6 +35,18 @@ const leaguesUI = [
   { id: "thaileague", name: "Thai League 1", logo: "https://media.api-sports.io/football/leagues/292.png" },
   { id: "ligue1", name: "Ligue 1", logo: "https://media.api-sports.io/football/leagues/61.png" },
 ] as const
+
+const date = ref(fmtDate(new Date()))
+
+const DEFAULT_SELECTED_LEAGUES = [
+  "epl",
+  "laliga",
+  "seriea",
+  "bundes",
+  "thaileague",
+] as const
+
+const selectedLeagues = ref<string[]>([...DEFAULT_SELECTED_LEAGUES])
 
 const LEAGUE_MAP = {
   epl: 39,
@@ -49,11 +58,19 @@ const LEAGUE_MAP = {
 } as const
 
 type LeagueSlug = keyof typeof LEAGUE_MAP
+type LeagueId = typeof LEAGUE_MAP[LeagueSlug]
 
+function resetLeagues() {
+  selectedLeagues.value = [...DEFAULT_SELECTED_LEAGUES]
+}
+
+
+// ✅ type-safe + กัน slug หลุด map
 const selectedLeagueIds = computed(() =>
-  selectedLeagues.value.map((s) => LEAGUE_MAP[s as LeagueSlug]).filter(Boolean)
+  selectedLeagues.value
+    .map((s) => LEAGUE_MAP[s as LeagueSlug])
+    .filter((n): n is LeagueId => typeof n === "number")
 )
-
 // ----------------------
 // fetch fixtures
 // ----------------------
@@ -63,14 +80,28 @@ type FixturesApiResponse = {
   [k: string]: any
 }
 
+// nonce สำหรับบังคับ refresh แบบไม่ใช้ cache (กดปุ่มเท่านั้น)
+const nonce = ref(0)
+
 const fetchQuery = computed(() => ({
-  date: date.value,
+  date: "2026-01-08",
   leagues: selectedLeagueIds.value.join(","),
   timezone: "Asia/Bangkok",
 }))
 
+
+// key แยก cache ตามวัน+ลีก+nonce
+const fetchKey = computed(() => {
+  const leagues = selectedLeagueIds.value.join(",") || "none"
+  return `fixtures:${date.value}:${leagues}:Asia/Bangkok:${nonce.value}`
+})
+
 const { data, pending, error, refresh } = await useFetch<FixturesApiResponse>("/api/fixtures", {
   query: fetchQuery,
+  key: fetchKey,          // สำคัญ: กัน cache ค้าง/ทับ
+  watch: [fetchQuery],    // สำคัญ: เปลี่ยนลีก/วัน → refetch
+  dedupe: "cancel",       // สำคัญ: ยกเลิก request เก่าถ้าปรับเร็ว
+  server: false,          // กัน SSR/Client mismatch (อาการเห็นแค่ลีกเดียวบ่อยมาก)
 })
 
 // ----------------------
@@ -123,22 +154,21 @@ function toMatchModel(fx: any) {
     short === "NS"
       ? formatHHmm(fx?.fixture?.date)
       : typeof elapsed === "number"
-      ? `${elapsed}'`
-      : short || "-"
+        ? `${elapsed}'`
+        : short || "-"
 
-  // แปลงให้ตรง class ใน HomeFixturesList.vue
   const status =
     short === "NS"
       ? "UPCOMING"
       : short === "FT" || short === "AET" || short === "PEN"
-      ? "FT"
-      : "LIVE"
+        ? "FT"
+        : "LIVE"
 
   return {
     id: fx?.fixture?.id,
     timeDisplay,
     status,
-    statusText: short, // จะโชว์ NS/1H/HT/FT
+    statusText: short,
     home: {
       name: fx?.teams?.home?.name ?? "-",
       score: fx?.goals?.home ?? 0,
@@ -155,7 +185,6 @@ function toMatchModel(fx: any) {
 const fixturesData = computed(() => {
   const arr = Array.isArray(data.value?.response) ? data.value!.response! : []
 
-  // group by league.id
   const groups = new Map<number, any[]>()
   for (const fx of arr) {
     const lid = fx?.league?.id
@@ -173,14 +202,13 @@ const fixturesData = computed(() => {
       id: leagueId,
       name: first?.league?.name ?? "Unknown League",
       country: first?.league?.country ?? "",
-      season: first?.league?.season ? String(first.league.season) : "-", // ✅ ใช้ season จาก API (ไม่ต้องส่ง query)
+      season: first?.league?.season ? String(first.league.season) : "-",
       logo: first?.league?.logo ?? "",
       liveCount,
       matches,
     }
   })
 
-  // sort: live ก่อน แล้วค่อยเรียงตามจำนวนแมตช์
   result.sort((a, b) => (b.liveCount - a.liveCount) || (b.matches.length - a.matches.length))
   return result
 })
@@ -190,10 +218,7 @@ const liveMatchCount = computed(() =>
 )
 
 const totalMatchCount = computed(() =>
-  fixturesData.value.reduce(
-    (sum: number, league: any) => sum + (league?.matches?.length ?? 0),
-    0
-  )
+  fixturesData.value.reduce((sum: number, league: any) => sum + (league?.matches?.length ?? 0), 0)
 )
 </script>
 
@@ -201,18 +226,14 @@ const totalMatchCount = computed(() =>
   <HomeSubNavbarVue class="flex-initial" />
 
   <div class="mx-auto mt-6 max-w-full px-4 sm:px-6 lg:px-50">
-    <HomeLiveMatchBarVue
-  :match-count="liveMatchCount"
-  :TotalmatchCount="totalMatchCount"
-  class="mt-4"
-/>
-
+    <HomeLiveMatchBarVue :match-count="liveMatchCount" :TotalmatchCount="totalMatchCount" class="mt-4" />
   </div>
 
   <div class="mx-auto max-w-7xl p-4 md:p-6">
     <div class="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 items-start">
       <aside class="hidden lg:block sticky top-20">
-        <HomeMenuSidebarVue :leagues="leaguesUI as any" v-model="selectedLeagues" />
+        <HomeMenuSidebarVue :leagues="leaguesUI as any" v-model="selectedLeagues" @reset="resetLeagues()" />
+
       </aside>
 
       <main class="w-full space-y-4">
@@ -226,11 +247,12 @@ const totalMatchCount = computed(() =>
 
         <div v-else-if="error" class="rounded-xl border p-4 text-red-600">
           โหลดไม่สำเร็จ: {{ (error as any)?.statusMessage || (error as any)?.message }}
-          <button class="ml-3 underline" @click="refresh()">ลองใหม่</button>
+          <button class="ml-3 underline" @click="nonce++; refresh()">ลองใหม่</button>
         </div>
 
         <div v-else-if="!fixturesData.length" class="rounded-xl border p-4">
           ไม่พบแมตช์ในวันที่เลือก (หรือโดนจำกัดแพ็กเกจ) — ลองเปลี่ยนลีก/วัน
+          <button class="ml-3 underline" @click="nonce++; refresh()">รีเฟรช</button>
         </div>
 
         <HomeFixturesListVue v-else :fixtures="fixturesData" />

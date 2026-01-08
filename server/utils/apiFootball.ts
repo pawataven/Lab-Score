@@ -18,7 +18,6 @@ function getCfg() {
 export async function apiFootballFetch(path: string, query?: Record<string, any>) {
   const { provider, baseUrl, key, host } = getCfg()
 
-  // ✅ สร้าง headers แบบไม่ให้มี undefined
   const headers: Record<string, string> = {}
 
   if (provider === "rapidapi") {
