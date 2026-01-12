@@ -24,8 +24,11 @@ function toYmdLocal(date: Date) {
 }
 
 function parseYmdLocal(value: string) {
-  const [y, m, d] = value.split('-').map(Number)
-  return normalize(new Date(y, (m || 1) - 1, d || 1))
+  const parts = value.split('-').map(Number)
+  const y = parts[0] || new Date().getFullYear()
+  const m = parts[1] || 1
+  const d = parts[2] || 1
+  return normalize(new Date(y, m - 1, d))
 }
 
 function asDate(val: ModelValue | undefined) {

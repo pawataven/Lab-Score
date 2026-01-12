@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import DateNavigatorVue from '~/components/ui/DateNavigator.vue';
-import { ref, watch } from 'vue';   
+import { ref, watch } from 'vue';
+import DateCarousel from '../fixtures/DateCarousel.vue';
 
 const selectedDate = ref(new Date().toISOString().slice(0, 10))
 
@@ -8,7 +8,21 @@ watch(selectedDate, (val) => {
     console.log('วันที่เลือก (สำหรับ API):', val) // 2025-12-11 แบบคริสต์ศักราช
 });
 
+// ✅ แก้ไขส่วนรับ Props ให้มีค่าเริ่มต้น (Default) เสมอ
+const props = withDefaults(defineProps<{
+    modelValue?: string;
+}>(), {
+    // ถ้าไม่มีค่าส่งมา หรือเป็น undefined ให้ใช้วันที่ปัจจุบันแทน
+    modelValue: () => new Date().toISOString().slice(0, 10)
+});
+
+// ✅ ส่วน defineEmits เหมือนเดิม
+defineEmits<{
+    (e: 'update:modelValue', value: string): void;
+}>();
+
 const activeMenu = ref<'all' | 'live' | 'upcoming' | 'finished'>('all')
+
 </script>
 
 <template>
@@ -18,7 +32,8 @@ const activeMenu = ref<'all' | 'live' | 'upcoming' | 'finished'>('all')
             class="mx-auto flex max-w-full flex-col items-start gap-4 py-3 sm:px-5 md:flex-row md:items-center md:justify-between md:py-4 lg:mx-50">
             <div class="flex w-full items-center justify-center gap-4 md:w-auto md:justify-start">
                 <div class="flex h-14 items-center  l-0 r.0">
-                    <DateNavigatorVue v-model="selectedDate" />
+                    <DateCarousel :model-value="modelValue ?? new Date().toISOString().slice(0, 10)"
+                        @update:model-value="$emit('update:modelValue', $event)" :back-days="3" :forward-days="3" />
                 </div>
             </div>
             <!-- ซับเมนูด้านขวา -->

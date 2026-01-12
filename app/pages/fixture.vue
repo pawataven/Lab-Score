@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import DateCarouselVue from '~/components/fixtures/DateCarousel.vue';
+
 import HomeFixturesListVue from '~/components/home/HomeFixturesList.vue';
 import HomeMenuSidebarVue from '~/components/home/HomeMenuSidebar.vue';
+import DateNavigatorVue from '~/components/ui/DateNavigator.vue';
 
 // State
 const selectedDate = ref('all');
@@ -107,7 +108,7 @@ const mockUpcomingFixtures = [
     </div>
 
     <div class="mb-6 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-      <DateCarouselVue v-model="selectedDate" />
+      <DateNavigatorVue v-model="selectedDate" />
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-8 items-start">

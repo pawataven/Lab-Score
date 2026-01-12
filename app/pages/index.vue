@@ -26,6 +26,17 @@ function formatHHmm(iso: string) {
 // ----------------------
 // UI state
 // ----------------------
+const route = useRoute()
+const router = useRouter()
+
+// ตั้งค่าวันเริ่มต้น: ถ้า URL มี ?date=... ให้ใช้ค่าเดิม ไม่งั้นใช้วันนี้
+const initialDate = (route.query.date as string) || getBangkokCurrentDate()
+const date = ref(initialDate)
+
+// Sync URL: เมื่อ date เปลี่ยน -> เปลี่ยน URL (ไม่ reload หน้า)
+watch(date, (newDate) => {
+  router.replace({ query: { ...route.query, date: newDate } })
+})
 
 const leaguesUI = [
   { id: "epl", name: "Premier League", logo: "https://media.api-sports.io/football/leagues/39.png" },
@@ -35,8 +46,6 @@ const leaguesUI = [
   { id: "thaileague", name: "Thai League 1", logo: "https://media.api-sports.io/football/leagues/292.png" },
   { id: "ligue1", name: "Ligue 1", logo: "https://media.api-sports.io/football/leagues/61.png" },
 ] as const
-
-const date = ref(fmtDate(new Date()))
 
 const DEFAULT_SELECTED_LEAGUES = [
   "epl",
@@ -64,8 +73,7 @@ function resetLeagues() {
   selectedLeagues.value = [...DEFAULT_SELECTED_LEAGUES]
 }
 
-
-// ✅ type-safe + กัน slug หลุด map
+// type-safe + กัน slug หลุด map
 const selectedLeagueIds = computed(() =>
   selectedLeagues.value
     .map((s) => LEAGUE_MAP[s as LeagueSlug])
@@ -83,14 +91,13 @@ type FixturesApiResponse = {
 // nonce สำหรับบังคับ refresh แบบไม่ใช้ cache (กดปุ่มเท่านั้น)
 const nonce = ref(0)
 
+// แก้ Fetch Query: ใช้ date.value แทนค่า Hardcode
 const fetchQuery = computed(() => ({
-  date: "2026-01-08",
+  date: date.value,  // <--- จุดสำคัญ! เปลี่ยนตรงนี้ API ถึงจะโหลดตามวันที่เลือก
   leagues: selectedLeagueIds.value.join(","),
   timezone: "Asia/Bangkok",
 }))
 
-
-// key แยก cache ตามวัน+ลีก+nonce
 const fetchKey = computed(() => {
   const leagues = selectedLeagueIds.value.join(",") || "none"
   return `fixtures:${date.value}:${leagues}:Asia/Bangkok:${nonce.value}`
@@ -98,10 +105,10 @@ const fetchKey = computed(() => {
 
 const { data, pending, error, refresh } = await useFetch<FixturesApiResponse>("/api/fixtures", {
   query: fetchQuery,
-  key: fetchKey,          // สำคัญ: กัน cache ค้าง/ทับ
-  watch: [fetchQuery],    // สำคัญ: เปลี่ยนลีก/วัน → refetch
-  dedupe: "cancel",       // สำคัญ: ยกเลิก request เก่าถ้าปรับเร็ว
-  server: false,          // กัน SSR/Client mismatch (อาการเห็นแค่ลีกเดียวบ่อยมาก)
+  key: fetchKey,
+  watch: [fetchQuery], 
+  dedupe: "cancel",
+  server: false,
 })
 
 // ----------------------
@@ -223,7 +230,7 @@ const totalMatchCount = computed(() =>
 </script>
 
 <template>
-  <HomeSubNavbarVue class="flex-initial" />
+  <HomeSubNavbarVue v-model="date" class="flex-initial" />
 
   <div class="mx-auto mt-6 max-w-full px-4 sm:px-6 lg:px-50">
     <HomeLiveMatchBarVue :match-count="liveMatchCount" :TotalmatchCount="totalMatchCount" class="mt-4" />
