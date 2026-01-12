@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// รับข้อมูล Fixtures เข้ามา (เดี๋ยวเราจะ Mock ข้อมูลส่งเข้ามาจากหน้า index.vue)
+// รับข้อมูล Fixtures เข้ามา (เดี๋ยวMockup ข้อมูลส่งเข้ามาจากหน้า index.vue)
 defineProps<{
   fixtures: any[]
 }>()

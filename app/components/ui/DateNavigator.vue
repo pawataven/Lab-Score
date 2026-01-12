@@ -10,7 +10,7 @@ const emit = defineEmits<{
 }>()
 
 /** ---------- date utils (timezone-safe) ---------- */
-const pad2 = (n: number) => String(n).padStart(2, '0')
+const pad2 = (n: number) => String(n).padStart(2, '0');
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
 
 function normalize(d: Date) {

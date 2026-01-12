@@ -26,11 +26,17 @@ export default defineNuxtConfig({
     plugins: [tailwindcss()]
   },
 
-  runtimeConfig: {
-    apiFootballKey: process.env.API_FOOTBALL_KEY,
+   runtimeConfig: {
+    
+    apiFootball: {
+      provider: process.env.API_FOOTBALL_PROVIDER, // apisports | rapidapi
+      baseUrl: process.env.API_FOOTBALL_BASE_URL,
+      key: process.env.API_FOOTBALL_KEY,
+      host: process.env.API_FOOTBALL_HOST,
+    },
     public: {
-      apiFootballBaseUrl: 'https://v3.football.api-sports.io'
-    }
+      fixtureFixedDate: process.env.FIXTURE_FIXED_DATE || "",
+    },
   },
 
   site: {

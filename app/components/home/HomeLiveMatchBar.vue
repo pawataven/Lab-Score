@@ -14,7 +14,7 @@
           {{ matchCount }} แมตช์กำลังแข่งขันสดตอนนี้
         </span>
         <span class="text-sm font-light text-white/90">
-          อัพเดทผลแบบเรียลไทม์
+          จากเเมตช์ทั้งหมด {{ TotalmatchCount }} แมตช์วันนี้
         </span>
       </div>
     </div>
@@ -38,7 +38,9 @@
 defineProps({
   matchCount: {
     type: Number,
-    default: 5
+  },
+  TotalmatchCount: {
+    type: Number,
   }
 })
 </script>
