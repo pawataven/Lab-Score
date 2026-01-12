@@ -1,5 +1,5 @@
 import { defineEventHandler, getQuery, createError } from "h3"
-import { apiFootballFetch } from "../utils/apiFootball"
+import { apiFootballFetch } from "../../app/utils/apiFootball"
 
 type Query = {
   date?: string

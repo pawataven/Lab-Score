@@ -1,97 +1,113 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, onMounted, watch, nextTick } from 'vue';
+import { getBangkokCurrentDate, addDays } from '~/utils/date';
 
-// 1. รับ Props และ Emits
-const props = defineProps<{
+// 1. รับค่า Props (เพิ่ม backDays และ forwardDays)
+// ใช้ withDefaults เพื่อกำหนดค่าเริ่มต้น ถ้าหน้าไหนไม่ส่งมา ก็จะใช้ค่าเดิมนี้
+const props = withDefaults(defineProps<{
   modelValue: string; 
-}>();
+  backDays?: number;     // รับจำนวนวันย้อนหลัง
+  forwardDays?: number;  // รับจำนวนวันล่วงหน้า
+}>(), {
+  backDays: 2,    // ค่า Default เดิม
+  forwardDays: 5  // ค่า Default เดิม
+});
 
+// 2. ส่งค่าเมื่อมีการเลือก
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
 }>();
 
-// 2. สร้าง Interface (โครงสร้างข้อมูล) ให้ชัดเจน
 interface DayItem {
   fullDate: string;
   dayName: string;
   dateDisplay: string;
-  matchCount: number;
+  isToday: boolean;
 }
 
-// Helper สร้างข้อมูลวันที่
+// 3. สร้างรายการวันที่ (Dynamic ตาม Props)
 const days = computed<DayItem[]>(() => {
-  const list: DayItem[] = []; // ประกาศตัวแปรว่าเป็น Array ของ DayItem
-  const today = new Date();
-  
+  const list: DayItem[] = [];
   const thaiDays = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
   const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
+  // หา "วันนี้" ตามเวลาฟุตบอลไทย (ตัดตี 5)
+  const todayStr = getBangkokCurrentDate();
+
+  // แก้ Loop: ใช้ props แทนตัวเลข Hardcode
+  // ใช้เครื่องหมายลบหน้า backDays เพื่อให้นับถอยหลัง
+  for (let i = -props.backDays; i <= props.forwardDays; i++) {
+    const currentISODate = addDays(todayStr, i);
+    const d = new Date(currentISODate);
     
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    
-    const dayNameStr = thaiDays[d.getDay()] || ''; 
-    const monthNameStr = thaiMonths[d.getMonth()] || '';
+    // ตั้งชื่อวันให้ดูง่าย (+ กันเหนียว undefined)
+    let dayNameStr = thaiDays[d.getDay()] || '';
+    if (i === 0) dayNameStr = 'วันนี้';
+    if (i === -1) dayNameStr = 'เมื่อวาน';
+    if (i === 1) dayNameStr = 'พรุ่งนี้'; // เพิ่มพรุ่งนี้ให้นิดนึงครับ ดู Friendly ดี
 
     list.push({
-      fullDate: `${year}-${month}-${day}`,
+      fullDate: currentISODate,
       dayName: dayNameStr,
-      dateDisplay: `${d.getDate()} ${monthNameStr}`,
-      matchCount: Math.floor(Math.random() * 10) + 2
+      dateDisplay: `${d.getDate()} ${thaiMonths[d.getMonth()] || ''}`,
+      isToday: i === 0
     });
   }
   return list;
 });
 
-// 4. Function เลือกวันที่
+// ฟังก์ชันเลือกวัน
 const selectDate = (val: string) => {
   emit('update:modelValue', val);
 };
+
+// Scroll ไปหาปุ่มที่เลือกอัตโนมัติ (UX)
+const containerRef = ref<HTMLElement | null>(null);
+const scrollToActive = () => {
+  nextTick(() => {
+    if (!containerRef.value) return;
+    const activeBtn = containerRef.value.querySelector('.is-selected');
+    if (activeBtn) {
+      activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  });
+};
+
+onMounted(() => scrollToActive());
+watch(() => props.modelValue, () => scrollToActive());
 </script>
 
 <style scoped>
-.scrollbar-hide::-webkit-scrollbar {
-    display: none;
-}
-.scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-}
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 </style>
 
 <template>
-  <div class="w-full overflow-x-auto pb-2 scrollbar-hide">
-    <div class="flex items-center space-x-2 min-w-max">
+  <div ref="containerRef" class="w-full overflow-x-auto pb-2 scrollbar-hide">
+    <div class="flex items-center space-x-2 min-w-max px-2">
       
-      <button 
-        @click="selectDate('all')"
-        class="flex flex-col items-center justify-center min-w-20 h-[72px] rounded-lg border transition-all duration-200"
-        :class="modelValue === 'all' 
-          ? 'bg-[#f97316] text-white border-[#f97316] shadow-md' 
-          : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-white hover:border-gray-300'"
-      >
-        <span class="text-sm font-bold">ทั้งหมด</span>
-      </button>
-
       <button 
         v-for="(day, index) in days" 
         :key="index"
         @click="selectDate(day.fullDate)"
-        class="flex flex-col items-center justify-center min-w-20 h-[72px] rounded-lg border transition-all duration-200 space-y-0.5"
-        :class="modelValue === day.fullDate 
-          ? 'bg-gray-100 border-gray-300 shadow-inner' 
-          : 'bg-white border-gray-100 hover:border-gray-300'"
+        class="flex  flex-col items-center justify-center min-w-[72px] h-[72px] rounded-xl border transition-all duration-200 space-y-0.5 relative overflow-hidden"
+        :class="[
+          modelValue === day.fullDate 
+            ? 'is-selected  bg-[#f97316] text-white border-[#f97316] shadow-md scale-105 z-10' 
+            : 'bg-slate-100 text-gray-600 border-gray-100 hover:border-gray-300 hover:bg-gray-50',
+          day.isToday && modelValue !== day.fullDate ? ' border-orange-400 bg-orange-50 ' : ''
+        ]"
       >
-        <span class="text-xs text-gray-500 font-medium">{{ day.dayName }}</span>
-        <span class="text-sm font-bold text-gray-800">{{ day.dateDisplay }}</span>
-        <span class="text-[10px] text-gray-400">{{ day.matchCount }} แมตช์</span>
+        <span class="text-xs font-medium" :class="modelValue === day.fullDate ? 'text-orange-100' : 'text-gray-500'">
+          {{ day.dayName }}
+        </span>
+        
+        <span class="text-sm font-bold">
+          {{ day.dateDisplay.split(' ')[0] }}
+          <span class="text-[10px] font-normal">{{ day.dateDisplay.split(' ')[1] }}</span>
+        </span>
       </button>
 
     </div>
   </div>
 </template>
-
