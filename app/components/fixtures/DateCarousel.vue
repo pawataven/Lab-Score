@@ -2,7 +2,7 @@
 import { computed, ref, onMounted, watch, nextTick } from 'vue';
 import { getBangkokCurrentDate, addDays } from '~/utils/date';
 
-// 1. รับค่า Props (เพิ่ม backDays และ forwardDays)
+// รับค่า Props (เพิ่ม backDays และ forwardDays)
 // ใช้ withDefaults เพื่อกำหนดค่าเริ่มต้น ถ้าหน้าไหนไม่ส่งมา ก็จะใช้ค่าเดิมนี้
 const props = withDefaults(defineProps<{
   modelValue: string; 

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import HomeSubNavbarVue from '~/components/home/HomeSubNavbar.vue';
 import NavigationBarVue from '~/layouts/NavigationBar.vue';
 
 </script>
