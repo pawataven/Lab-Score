@@ -8,17 +8,17 @@ export const formatDateToISO = (date: Date): string => {
   return `${y}-${m}-${d}`;
 };
 
-// พระเอกของเรา: คำนวณ "วันนี้" โดยอิงเวลาไทย + ตัดรอบตี 05:00
+//คำนวณโดยอิงเวลาไทย + ตัดรอบตี 05:00
 export const getBangkokCurrentDate = (cutoffHour = 5): string => {
   const now = new Date();
   
-  // 1. แปลงเวลาเครื่องเป็น UTC
+  // แปลงเวลาเครื่องเป็น UTC
   const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
   
-  // 2. บวก 7 ชั่วโมงเพื่อเป็นเวลาไทย (Bangkok)
+  //บวก 7 ชั่วโมงเพื่อเป็นเวลาไทย (Bangkok)
   const bangkokTime = new Date(utc + (3600000 * 7));
   
-  // 3. Logic ตัดวัน: ถ้าเวลายังไม่ถึง 05:00 น. ให้ถือว่าเป็น "เมื่อวาน"
+  // Logic ถ้าเวลายังไม่ถึง 05:00 น. ให้ถือว่าเป็น "เมื่อวาน"
   if (bangkokTime.getHours() < cutoffHour) {
     bangkokTime.setDate(bangkokTime.getDate() - 1);
   }

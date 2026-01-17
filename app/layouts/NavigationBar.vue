@@ -1,8 +1,5 @@
 <script setup lang="ts">
-/**
- * ใช้ไอคอนผ่าน @nuxt/icon
- * ไม่ต้อง import อะไรเพิ่ม แค่เรียก <Icon />
- */
+
 </script>
 
 <template>
@@ -23,7 +20,6 @@
           <p class="mt-0.5 text-xs text-slate-500 sm:text-sm lg:w-100">
             <span class="font-black text-black">Score-</span>
             <span class="font-black text-emerald-600">Sanan</span>
-            <!-- Live Scores &amp; Results · Power by ArpaoDev -->
              ศูนย์รวมผลบอลสด โปรแกรมการแข่งขัน และตารางคะแนนฟุตบอลแบบเรียลไทม์ บริการฟรีสำหรับคนไทย
           </p>
         </div>

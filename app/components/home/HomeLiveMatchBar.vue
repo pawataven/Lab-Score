@@ -34,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-// รับค่าจำนวนแมตช์เข้ามา (Default ไว้ที่ 0 หรือ 5 ตามตัวอย่าง)
+// รับค่าจำนวนแมตช์เข้ามา (Default ไว้ที่ 0 หรือ 5)
 defineProps({
   matchCount: {
     type: Number,
