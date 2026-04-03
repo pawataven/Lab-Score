@@ -43,8 +43,3 @@ useHead({
     </NuxtLayout>
   </div>
 </template>
-
-<style>
-/* นำเข้า CSS หลักตรงนี้ หรือไปตั้งค่าใน nuxt.config.ts ก็ได้ */
-@import "~/assets/css/main.css";
-</style>

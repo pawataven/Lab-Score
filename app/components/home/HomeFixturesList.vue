@@ -7,21 +7,25 @@ defineProps<{
 
 <template>
   <div class="space-y-4 md:space-y-6">
-    <div v-for="league in fixtures" :key="league.id"
-      class="bg-white rounded-lg md:rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <div v-for="(league, index) in fixtures" :key="league.id"
+      class="league-wrapper bg-white rounded-lg md:rounded-xl border border-gray-200 shadow-sm overflow-hidden">
 
       <div
         class="flex items-center justify-between px-3 py-2 md:px-4 md:py-3 bg-gray-50/80 border-b border-gray-100 backdrop-blur-sm">
         <div class="flex items-center gap-2 md:gap-3">
           <div class="w-6 h-6 md:w-8 md:h-8 flex items-center justify-center shrink-0">
-            <img v-if="league.logo" :src="league.logo" class="w-full h-full object-contain" alt="league logo">
+
+            <NuxtImg v-if="league.logo" :src="league.logo"  format="webp" quality="80"
+              :loading="index === 0 ? 'eager' : 'lazy'" :fetchpriority="index === 0 ? 'high' : 'auto'"
+              class="w-full h-full object-contain" alt="league logo" />
             <div v-else class="w-full h-full rounded-full bg-gray-200"></div>
+
           </div>
 
           <div class="min-w-0">
-            <h3 class="font-bold text-gray-800 uppercase text-xs md:text-base leading-tight truncate pr-2">
+            <h2 class="font-bold text-gray-800 uppercase text-xs md:text-base leading-tight truncate pr-2">
               {{ league.name }}
-            </h3>
+            </h2>
             <span class="text-[10px] md:text-xs text-gray-500 font-medium block">
               {{ league.country }} • {{ league.season }}
             </span>
@@ -43,18 +47,18 @@ defineProps<{
           <div class="w-14 md:w-20 shrink-0 flex flex-col items-center justify-center gap-1 mr-1 md:mr-2">
             <span class="text-xs md:text-sm font-bold tracking-tight" :class="{
               'text-[#f97316] animate-pulse': match.status === 'LIVE',
-              'text-green-600': match.status === 'FT',
-              'text-gray-500': match.status === 'UPCOMING'
+              'text-green-700': match.status === 'FT',
+              'text-gray-800': match.status === 'UPCOMING'
             }">
               {{ match.timeDisplay }}
             </span>
 
             <span
-              class="px-1.5 py-0.5 rounded-sm text-[9px] md:text-[10px] font-bold border text-center w-full max-w-[48px] uppercase tracking-wider"
+              class="px-1.5 py-0.5 rounded-sm text-[9px] md:text-[10px] font-bold border text-center w-full max-w-12 uppercase tracking-wider"
               :class="{
                 'bg-orange-50 text-[#f97316] border-orange-100': match.status === 'LIVE',
-                'bg-green-50 text-green-600 border-green-100': match.status === 'FT',
-                'bg-gray-100 text-gray-400 border-gray-200': match.status === 'UPCOMING'
+                'bg-green-50 text-green-700 border-green-100': match.status === 'FT',
+                'bg-gray-100 text-gray-800 border-gray-200': match.status === 'UPCOMING'
               }">
               {{ match.statusText }}
             </span>
@@ -67,26 +71,32 @@ defineProps<{
                 {{ match.home.name }}
               </span>
               <div class="w-6 h-6 md:w-9 md:h-9 flex items-center justify-center shrink-0">
-                <img v-if="match.home.logo" :src="match.home.logo" class="w-full h-full object-contain drop-shadow-sm"
-                  alt="home">
+
+                <NuxtImg v-if="match.home.logo" :src="match.home.logo" format="webp" quality="80"
+                  :loading="index === 0 ? 'eager' : 'lazy'" :fetchpriority="index === 0 ? 'high' : 'auto'"
+                  class="w-full h-full object-contain drop-shadow-sm" alt="home" />
+
               </div>
             </div>
 
             <div class="w-10 md:w-16 flex justify-center items-center shrink-0">
-              <div v-if="match.status === 'UPCOMING'" class="text-[10px] md:text-xs text-gray-400 font-medium">
+              <div v-if="match.status === 'UPCOMING'" class="text-[10px] md:text-xs text-gray-900 font-medium">
                 VS
               </div>
               <div v-else
-                class="text-sm md:text-xl font-bold text-gray-800 tracking-wider bg-slate-100/50 px-1.5 md:px-3 py-0.5 rounded-md min-w-[32px] text-center">
+                class="text-sm md:text-xl font-bold text-gray-800 tracking-wider bg-slate-100/50 px-1.5 md:px-3 py-0.5 rounded-md min-w-8 text-center">
                 {{ match.home.score }}-{{ match.away.score }}
               </div>
             </div>
 
             <div class="flex items-center justify-start gap-1.5 md:gap-3 text-left overflow-hidden">
               <div class="w-6 h-6 md:w-9 md:h-9 flex items-center justify-center shrink-0">
-                <img v-if="match.away.logo" :src="match.away.logo" class="w-full h-full object-contain drop-shadow-sm"
-                  alt="away">
-              </div>
+
+                <NuxtImg v-if="match.away.logo" :src="match.away.logo"  format="webp" quality="80"
+                  :loading="index === 0 ? 'eager' : 'lazy'" :fetchpriority="index === 0 ? 'high' : 'auto'"
+                  class="w-full h-full object-contain drop-shadow-sm" alt="away" />
+
+              </div>  
               <span class="text-xs md:text-base font-medium text-gray-900 truncate leading-tight">
                 {{ match.away.name }}
               </span>

@@ -15,11 +15,13 @@
     "@nuxt/image": "2.0.0",
     "@nuxtjs/seo": "^3.2.2",
     "@pinia/nuxt": "^0.11.3",
+    "@unhead/vue": "^2.1.2",
     "@vuepic/vue-datepicker": "^12.1.0",
     "@vueuse/nuxt": "^14.1.0",
     "dayjs": "^1.11.19",
     "nuxt": "^4.2.1",
     "pinia": "^3.0.4",
+    "unhead": "^2.1.2",
     "vue": "^3.5.25",
     "vue-router": "^4.6.3"
   },

@@ -1,31 +1,64 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import StandingsTableVue from '~/components/Standings/StandingsTable.vue';
+import type { LeagueSlug } from '~/composables/useLeagueConfig'
+import { LEAGUE_SLUG_TO_ID } from '~/composables/useLeagueConfig'
+import StandingsTableVue from '~/components/Standings/StandingsTable.vue'
 
-// 1. State
-const selectedLeague = ref('epl');
+type StandingRow = {
+  rank: number
+  name: string
+  logo: string
+  played: number
+  win: number
+  draw: number
+  lose: number
+  goalsFor: number
+  goalsAgainst: number
+  goalsDiff: number
+  points: number
+  form: string[]
+}
 
-// 2. Mock Data: Leagues
-const leagues = [
+type StandingsApiResponse = {
+  standings: StandingRow[]
+  league: {
+    id: number
+    name: string
+    country: string
+    logo: string
+    season: number
+  } | null
+}
+
+const selectedLeague = ref<LeagueSlug>('epl')
+
+const leagues: Array<{ id: LeagueSlug; name: string; country: string; logo: string }> = [
   { id: 'epl', name: 'Premier League', country: 'England', logo: 'https://media.api-sports.io/football/leagues/39.png' },
   { id: 'laliga', name: 'La Liga', country: 'Spain', logo: 'https://media.api-sports.io/football/leagues/140.png' },
   { id: 'bundes', name: 'Bundesliga', country: 'Germany', logo: 'https://media.api-sports.io/football/leagues/78.png' },
   { id: 'seriea', name: 'Serie A', country: 'Italy', logo: 'https://media.api-sports.io/football/leagues/135.png' },
   { id: 'ligue1', name: 'Ligue 1', country: 'France', logo: 'https://media.api-sports.io/football/leagues/61.png' },
-];
+]
 
-// Computed: หาข้อมูลลีกที่เลือกอยู่
-const currentLeague = computed(() => leagues.find(l => l.id === selectedLeague.value));
+const currentLeague = computed(() => leagues.find((l) => l.id === selectedLeague.value))
+const currentLeagueId = computed(() => LEAGUE_SLUG_TO_ID[selectedLeague.value])
+const now = new Date()
+const season = now.getUTCMonth() >= 6 ? now.getUTCFullYear() : now.getUTCFullYear() - 1
 
-// 3. Mock Data: Standings (ข้อมูลตารางคะแนน)
-const mockStandings = [
-  { rank: 1, name: 'Liverpool', logo: 'https://media.api-sports.io/football/teams/40.png', played: 17, win: 13, draw: 3, lose: 1, goalsFor: 40, goalsAgainst: 17, goalsDiff: 23, points: 42, form: ['W','W','D','W','W'] },
-  { rank: 2, name: 'Arsenal', logo: 'https://media.api-sports.io/football/teams/42.png', played: 17, win: 10, draw: 5, lose: 2, goalsFor: 35, goalsAgainst: 16, goalsDiff: 19, points: 35, form: ['W','D','W','W','D'] },
-  { rank: 3, name: 'Nottm Forest', logo: 'https://media.api-sports.io/football/teams/65.png', played: 17, win: 10, draw: 4, lose: 3, goalsFor: 26, goalsAgainst: 17, goalsDiff: 9, points: 34, form: ['W','L','W','W','D'] },
-  { rank: 4, name: 'Chelsea', logo: 'https://media.api-sports.io/football/teams/49.png', played: 17, win: 9, draw: 5, lose: 3, goalsFor: 36, goalsAgainst: 22, goalsDiff: 14, points: 32, form: ['D','W','W','L','W'] },
-  { rank: 5, name: 'Newcastle', logo: 'https://media.api-sports.io/football/teams/34.png', played: 17, win: 9, draw: 4, lose: 4, goalsFor: 30, goalsAgainst: 18, goalsDiff: 12, points: 31, form: ['W','W','D','L','W'] },
-  // ... เพิ่มทีมอื่นๆ ต่อได้เลย
-];
+const { data, pending, error, refresh } = useFetch<StandingsApiResponse>('/api/standings', {
+  query: computed(() => ({
+    league: String(currentLeagueId.value),  
+    season: String(season),
+  })),
+  key: computed(() => `standings:${selectedLeague.value}:${season}`),
+  watch: [selectedLeague],
+  server: false,
+  lazy: true,
+})
+
+const standings = computed(() => data.value?.standings ?? [])
+const leagueTitle = computed(() => data.value?.league?.name || currentLeague.value?.name || '')
+const leagueCountry = computed(() => data.value?.league?.country || currentLeague.value?.country || '')
+const leagueLogo = computed(() => data.value?.league?.logo || currentLeague.value?.logo || '')
 </script>
 
 <style scoped>
@@ -50,7 +83,7 @@ const mockStandings = [
         </span>
         ตารางคะแนน
       </h1>
-      <p class="text-sm text-gray-500 mt-1 ml-12">อัปเดตล่าสุด: ฤดูกาล 2024-25</p>
+      <p class="text-sm text-gray-500 mt-1 ml-12">อัปเดตล่าสุด: ฤดูกาล {{ season }}-{{ String((season + 1) % 100).padStart(2, '0') }}</p>
     </div>
 
     <div class="mb-6">
@@ -72,14 +105,27 @@ const mockStandings = [
     </div>
 
     <div class="mb-6 bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
-      <img :src="currentLeague?.logo" class="w-16 h-16 object-contain">
+      <img :src="leagueLogo" class="w-16 h-16 object-contain">
       <div>
-        <h2 class="text-xl font-bold text-gray-800 uppercase">{{ currentLeague?.name }}</h2>
-        <p class="text-gray-500">{{ currentLeague?.country }} • 2024-25</p>
+        <h2 class="text-xl font-bold text-gray-800 uppercase">{{ leagueTitle }}</h2>
+        <p class="text-gray-500">{{ leagueCountry }} • {{ season }}-{{ String((season + 1) % 100).padStart(2, '0') }}</p>
       </div>
     </div>
 
-    <StandingsTableVue :standings="mockStandings" />
+    <div v-if="pending" class="rounded-xl border border-gray-200 bg-white p-6 text-gray-500">
+      กำลังโหลดตารางคะแนน...
+    </div>
+
+    <div v-else-if="error" class="rounded-xl border border-red-200 bg-red-50 p-4 text-red-600">
+      โหลดตารางคะแนนไม่สำเร็จ: {{ (error as any)?.statusMessage || (error as any)?.message }}
+      <button class="ml-3 underline" @click="refresh()">ลองใหม่</button>
+    </div>
+
+    <div v-else-if="!standings.length" class="rounded-xl border border-gray-200 bg-white p-6 text-gray-500">
+      ไม่พบข้อมูลตารางคะแนนของลีกนี้
+    </div>
+
+    <StandingsTableVue v-else :standings="standings" />
 
   </div>
 </template>

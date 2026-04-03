@@ -1,17 +1,33 @@
+/* assets/css/main.css */
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap');
 
 @theme {
-  --color-text-primary: #313647;
-  --color-background-primary: #FFF;
+  --color-brand-orange: #FF6A00;
+  --color-brand-red: #E6392E;
 
-  --color-menu-background: #FF7A30;
-  --color-menu-hover-background: #E9E3DF;
+  --color-background-primary: #FFFFFF;
+  --color-background-dark: #1F232B;
+
+  --color-text-primary: #2E2E38;
+  --color-text-secondary: #6B7280;
+
+  --color-menu-background: #FF6A00;
+  --color-menu-hover-background: #FFE2CC;
 }
-*{
+
+* {
+  /* Nuxt @fonts จะรู้เองว่าต้องไปโหลดฟอนต์ Prompt มาให้ */
   font-family: "Prompt", sans-serif;
   font-weight: 600;
   font-style: normal;
+}
+
+@layer base {
+    :host,
+    html {
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+    }
 }
 
 body {
