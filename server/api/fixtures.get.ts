@@ -58,21 +58,21 @@ export default defineEventHandler(async (event) => {
     const data = (await apiFootballFetch("/fixtures", {
       date: date,
       timezone: targetTimezone,
-    })) as FixtureResponse 
+    })) as FixtureResponse
 
     // 3.3 Check Errors from Provider
     // ตอนนี้ TypeScript จะรู้จัก data.errors แล้ว ไม่ขึ้นแดง
-    const hasErrors = Array.isArray(data.errors) 
-      ? data.errors.length > 0 
+    const hasErrors = Array.isArray(data.errors)
+      ? data.errors.length > 0
       : data.errors && Object.keys(data.errors).length > 0
 
     if (hasErrors) {
       console.error("[API-Football Error]:", data.errors)
       // กรณีมี error จาก provider ส่ง array ว่างกลับไปก่อน กันเว็บพัง
-      return { 
-        results: 0, 
-        response: [], 
-        meta: { date, error: "Provider Error" } 
+      return {
+        results: 0,
+        response: [],
+        meta: { date, error: "Provider Error" }
       }
     }
 

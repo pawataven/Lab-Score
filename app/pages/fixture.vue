@@ -107,7 +107,7 @@ const mockUpcomingFixtures = [
       </div>
     </div>
 
-    <div class="mb-6 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+    <div class="mb-6 bg-white p-4 rounded-2xl border border-gray-100 shadow-md w-fit">
       <DateNavigatorVue v-model="selectedDate" />
     </div>
 
