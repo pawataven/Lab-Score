@@ -1,133 +1,159 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import type { ApiFixture, FixtureApiResponse, LeagueGroup } from '~/types/fixture'
+import { toMatchModel } from '~/utils/match'
 
-import HomeFixturesListVue from '~/components/home/HomeFixturesList.vue';
-import HomeMenuSidebarVue from '~/components/home/HomeMenuSidebar.vue';
-import DateNavigatorVue from '~/components/ui/DateNavigator.vue';
+import HomeFixturesListVue from '~/components/home/HomeFixturesList.vue'
+import HomeMenuSidebarVue from '~/components/home/HomeMenuSidebar.vue'
+import DateNavigatorVue from '~/components/ui/DateNavigator.vue'
 
-// State
-const selectedDate = ref('all');
-const selectedLeagues = ref(['epl', 'laliga', 'seriea', 'bundes', 'thaileague', 'ligue1']);
+const { leaguesUI, selectedLeagues, selectedLeagueIds } = useLeagueConfig()
 
-// Computed: ชื่อวันที่หัวข้อ (Header)
-const displayDateHeader = computed(() => {
-  if (selectedDate.value === 'all') return 'โปรแกรมการแข่งขันทั้งหมด';
-  // แปลงวันที่ YYYY-MM-DD เป็นไทย
-  const date = new Date(selectedDate.value);
-  const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
-  return date.toLocaleDateString('th-TH', options);
-});
+const selectedDate = ref<string>('all')
 
-// Computed: นับรวมแมตช์ทั้งหมด
-const totalMatches = computed(() => {
-  return mockUpcomingFixtures.reduce((acc, league) => acc + league.matches.length, 0);
-});
+const leagueIdsForQuery = computed(() => {
+  const ids = selectedLeagueIds.value
+  return ids.length ? [...ids].sort((a, b) => a - b) : [...selectedLeagueIds.value].sort((a, b) => a - b)
+})
 
-// 🛠 MOCK DATA: รายชื่อลีกใน Sidebar
-const mockLeagues = [
-  { id: 'epl', name: 'Premier League', logo: 'https://media.api-sports.io/football/leagues/39.png' },
-  { id: 'laliga', name: 'La Liga', logo: 'https://media.api-sports.io/football/leagues/140.png' },
-  { id: 'seriea', name: 'Serie A', logo: 'https://media.api-sports.io/football/leagues/135.png' },
-  { id: 'bundes', name: 'Bundesliga', logo: 'https://media.api-sports.io/football/leagues/78.png' },
-  { id: 'thaileague', name: 'Thai League 1', logo: 'https://media.api-sports.io/football/leagues/292.png' },
-  { id: 'ligue1', name: 'Ligue 1', logo: 'https://media.api-sports.io/football/leagues/61.png' },
-];
+const resolvedApiDate = computed(() =>
+  selectedDate.value === 'all' ? getBangkokCurrentDate() : selectedDate.value,
+)
 
-// 🛠 MOCK DATA: โปรแกรมบอล (Upcoming)
-const mockUpcomingFixtures = [
+const fetchQuery = computed(() => ({
+  date: resolvedApiDate.value,
+  leagues: leagueIdsForQuery.value.join(','),
+  timezone: 'Asia/Bangkok',
+}))
+
+const { data, pending, error, refresh } = await useAsyncData<FixtureApiResponse>(
+  'fixture-program-schedule',
+  () =>
+    $fetch<FixtureApiResponse>('/api/fixtures', {
+      query: fetchQuery.value,
+    }),
   {
-    id: 1,
-    name: 'Premier League',
-    country: 'England',
-    season: '2024/25',
-    logo: 'https://media.api-sports.io/football/leagues/39.png',
-    liveCount: 0,
-    matches: [
-      {
-        id: 101,
-        timeDisplay: "19:30",
-        status: "UPCOMING",
-        statusText: "Upcoming",
-        home: { name: "Arsenal", score: 0, logo: "https://media.api-sports.io/football/teams/42.png" },
-        away: { name: "Man United", score: 0, logo: "https://media.api-sports.io/football/teams/33.png" }
-      },
-      {
-        id: 102,
-        timeDisplay: "22:00",
-        status: "UPCOMING",
-        statusText: "Upcoming",
-        home: { name: "Chelsea", score: 0, logo: "https://media.api-sports.io/football/teams/49.png" },
-        away: { name: "Liverpool", score: 0, logo: "https://media.api-sports.io/football/teams/40.png" }
-      }
-    ]
+    lazy: false,
+    watch: [fetchQuery],
   },
-  {
-    id: 2,
-    name: 'La Liga',
-    country: 'Spain',
-    season: '2024/25',
-    logo: 'https://media.api-sports.io/football/leagues/140.png',
-    liveCount: 0,
-    matches: [
-      {
-        id: 201,
-        timeDisplay: "02:00",
-        status: "UPCOMING",
-        statusText: "Upcoming",
-        home: { name: "Barcelona", score: 0, logo: "https://media.api-sports.io/football/teams/529.png" },
-        away: { name: "Sevilla", score: 0, logo: "https://media.api-sports.io/football/teams/536.png" }
-      },
-       {
-        id: 202,
-        timeDisplay: "04:00",
-        status: "UPCOMING",
-        statusText: "Upcoming",
-        home: { name: "Valencia", score: 0, logo: "https://media.api-sports.io/football/teams/532.png" },
-        away: { name: "Villarreal", score: 0, logo: "https://media.api-sports.io/football/teams/533.png" }
-      }
-    ]
+)
+
+const planMessage = computed(() => {
+  const msg = data.value?.errors?.plan
+  if (typeof msg === 'string' && (msg.includes('Free') || msg.includes('access'))) {
+    return 'ขออภัยไม่สามารถเรียกดูข้อมูลย้อนหลังหรือล่วงหน้าเกิน 3 วันได้ในขณะนี้'
   }
-];
+  return typeof msg === 'string' ? msg : ''
+})
+
+const fixtures = computed<LeagueGroup[]>(() => {
+  if (!selectedLeagues.value.length) return []
+
+  const raw = data.value?.response
+  if (!Array.isArray(raw)) return []
+
+  const allowed = new Set<number>(selectedLeagueIds.value)
+  const groups = new Map<number, ApiFixture[]>()
+
+  for (const fx of raw) {
+    const leagueId = fx?.league?.id
+    if (typeof leagueId !== 'number' || !allowed.has(leagueId)) continue
+    if (!groups.has(leagueId)) groups.set(leagueId, [])
+    groups.get(leagueId)!.push(fx)
+  }
+
+  const result: LeagueGroup[] = []
+
+  for (const [leagueId, items] of groups.entries()) {
+    const first = items[0]
+    const matches = items.map(toMatchModel)
+    if (matches.length === 0) continue
+
+    const liveCount = matches.filter((m) => m.status === 'LIVE').length
+
+    result.push({
+      id: leagueId,
+      name: first?.league?.name ?? 'Unknown',
+      country: first?.league?.country ?? '',
+      season: first?.league?.season != null ? String(first.league.season) : '-',
+      logo: first?.league?.logo ?? '',
+      liveCount,
+      matches,
+    })
+  }
+
+  return result.sort((a, b) => b.liveCount - a.liveCount || b.matches.length - a.matches.length)
+})
+
+const totalMatches = computed(() =>
+  fixtures.value.reduce((acc, league) => acc + league.matches.length, 0),
+)
+
+const displayDateHeader = computed(() => {
+  if (selectedDate.value === 'all') return 'โปรแกรมการแข่งขันทั้งหมด'
+  const date = new Date(selectedDate.value)
+  const options: Intl.DateTimeFormatOptions = {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }
+  return date.toLocaleDateString('th-TH', options)
+})
+
+const subtitleLine = computed(() => {
+  if (pending.value) return 'กำลังโหลดโปรแกรม...'
+  if (totalMatches.value === 0) return 'ไม่มีแมตช์ในวันที่เลือก'
+  return `${totalMatches.value} แมตช์`
+})
+
+function retryLoad() {
+  void refresh()
+}
 </script>
 
 <template>
-  <div class="mx-auto max-w-7xl p-4 md:p-6 min-h-screen">
-    
-    <div class="mb-6 flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
+  <div class="mx-auto max-w-7xl min-h-screen p-4 md:p-6">
+    <div class="mb-6 flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
       <div class="flex items-center gap-3">
-        <div class="p-2.5 bg-orange-100 rounded-xl text-[#f97316]">
+        <div class="rounded-xl bg-orange-100 p-2.5 text-[#f97316]">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
         </div>
         <div>
-          <h1 class="text-2xl font-bold text-gray-800">โปรแกรมการแข่งขัน</h1>
-          <p class="text-sm text-gray-500">38 แมตช์ใน 7 วันข้างหน้า</p>
+          <h1 class="text-2xl font-bold text-gray-800">
+            โปรแกรมการแข่งขัน
+          </h1>
+          <p class="text-sm text-gray-500">
+            {{ subtitleLine }}
+          </p>
         </div>
       </div>
     </div>
 
-    <div class="mb-6 bg-white p-4 rounded-2xl border border-gray-100 shadow-md w-fit">
+    <div class="mb-6 w-fit rounded-2xl border border-gray-100 bg-white p-4 shadow-md">
       <DateNavigatorVue v-model="selectedDate" />
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-8 items-start">
-      
-      <aside class="hidden lg:block sticky top-24">
-        <HomeMenuSidebarVue 
-          :leagues="mockLeagues"
-          v-model="selectedLeagues" 
+    <div class="grid grid-cols-1 items-start gap-8 lg:grid-cols-[280px_1fr]">
+      <aside class="sticky top-24 hidden lg:block">
+        <HomeMenuSidebarVue
+          :leagues="leaguesUI"
+          v-model="selectedLeagues"
         />
       </aside>
 
       <main class="w-full space-y-6">
-        
-        <div class="w-full h-32 bg-gray-100 rounded-xl border border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400">
-          <span class="text-xs font-semibold tracking-wider uppercase">Advertisement</span>
+        <div class="flex h-32 w-full flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-100 text-gray-400">
+          <span class="text-xs font-semibold uppercase tracking-wider">Advertisement</span>
         </div>
 
-        <div class="flex items-center gap-3 mb-2">
-          <div class="p-2 bg-orange-50 rounded-lg text-[#f97316]">
+        <div v-if="planMessage" class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
+          {{ planMessage }}
+        </div>
+
+        <div class="mb-2 flex items-center gap-3">
+          <div class="rounded-lg bg-orange-50 p-2 text-[#f97316]">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
@@ -135,19 +161,53 @@ const mockUpcomingFixtures = [
           <h2 class="text-lg font-bold text-gray-800">
             {{ displayDateHeader }}
           </h2>
-          <span class="px-2 py-0.5 bg-gray-100 text-gray-500 text-xs rounded-full font-medium">
-            {{ totalMatches }} แมตช์
+          <span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+            {{ pending ? '…' : totalMatches }} แมตช์
           </span>
         </div>
 
-        <HomeFixturesListVue :fixtures="mockUpcomingFixtures" />
-
-        <div v-if="mockUpcomingFixtures.length === 0" class="text-center py-12 bg-white rounded-xl border border-gray-200 border-dashed">
-          <p class="text-gray-500">ไม่มีโปรแกรมการแข่งขันในวันที่เลือก</p>
+        <div
+          v-if="pending"
+          class="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-8 shadow-sm"
+        >
+          <div class="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-orange-400 via-orange-500 to-orange-400 animate-pulse" />
+          <p class="text-center text-sm font-medium text-slate-600">
+            กำลังโหลดโปรแกรม...
+          </p>
         </div>
 
+        <div
+          v-else-if="error"
+          class="rounded-xl border border-red-200 bg-red-50 p-6 text-red-800"
+        >
+          <p class="font-medium">
+            โหลดข้อมูลไม่สำเร็จ
+          </p>
+          <p class="mt-1 text-sm opacity-90">
+            {{ (error as any)?.statusMessage || (error as any)?.message || 'ลองใหม่อีกครั้ง' }}
+          </p>
+          <button
+            type="button"
+            class="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+            @click="retryLoad"
+          >
+            ลองอีกครั้ง
+          </button>
+        </div>
+
+        <template v-else>
+          <HomeFixturesListVue :fixtures="fixtures" />
+
+          <div
+            v-if="fixtures.length === 0"
+            class="rounded-xl border border-dashed border-gray-200 bg-white py-12 text-center"
+          >
+            <p class="text-gray-500">
+              ไม่มีโปรแกรมการแข่งขันในวันที่เลือก
+            </p>
+          </div>
+        </template>
       </main>
     </div>
-
   </div>
 </template>

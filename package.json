@@ -18,6 +18,7 @@
     "@unhead/vue": "^2.1.2",
     "@vuepic/vue-datepicker": "^12.1.0",
     "@vueuse/nuxt": "^14.1.0",
+    "axios": "^1.7.9",
     "dayjs": "^1.11.19",
     "nuxt": "^4.2.1",
     "pinia": "^3.0.4",
