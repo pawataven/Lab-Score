@@ -27,7 +27,7 @@ const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.�
 
 const parseIsoAsLocalDate = (value: string): Date => {
   const [year, month, day] = value.split('-').map(Number)
-  return new Date(year, (month || 1) - 1, day || 1)
+  return new Date(year || 0, (month || 1) - 1, day || 1)
 }
 
 const days = computed<DayItem[]>(() => {

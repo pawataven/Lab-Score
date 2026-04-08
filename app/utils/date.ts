@@ -56,7 +56,7 @@ const partsToIsoDate = (parts: Pick<ZonedDateParts, 'year' | 'month' | 'day'>): 
 
 const parseIsoDate = (value: string): { year: number; month: number; day: number } => {
   const [year, month, day] = value.split('-').map(Number)
-  return { year, month, day }
+  return { year: year || 0, month: month || 1, day: day || 1 }
 }
 
 /**
