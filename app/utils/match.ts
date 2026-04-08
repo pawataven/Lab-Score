@@ -19,6 +19,7 @@ export function toMatchModel(fx: ApiFixture, pageDate?: string): Match {
   const short = fx.fixture?.status?.short ?? ''
   const elapsed = fx.fixture?.status?.elapsed
   const matchDate = new Date(fx.fixture.date)
+  const status = getMatchStatus(short)
   const timeDisplay = short === 'NS'
     ? formatTimeHHmm(fx.fixture.date)
     : typeof elapsed === 'number'
@@ -28,9 +29,9 @@ export function toMatchModel(fx: ApiFixture, pageDate?: string): Match {
   return {
     id: fx.fixture.id,
     timeDisplay,
-    status: getMatchStatus(short),
+    status,
     statusText: short,
-    label: pageDate ? getMatchTimeLabel(matchDate, pageDate) : null,
+    label: pageDate && status === 'UPCOMING' ? getMatchTimeLabel(matchDate, pageDate) : null,
     home: {
       name: fx.teams?.home?.name ?? '-',
       score: fx.goals?.home ?? 0,

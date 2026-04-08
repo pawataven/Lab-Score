@@ -116,6 +116,7 @@ export default defineNuxtConfig({
     },
     public: {
       fixtureFixedDate: process.env.FIXTURE_FIXED_DATE || "",
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || "http://localhost:4000/api",
     },
   },
 

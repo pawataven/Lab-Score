@@ -255,7 +255,7 @@ onBeforeUnmount(() => {
         </button>
 
         <button type="button"
-          class="relative flex items-center gap-2 rounded-full w-[220px] justify-center whitespace-nowrap bg-slate-100 py-2 px-3 hover:bg-slate-200 transition"
+          class="relative flex items-center gap-2 rounded-full w-55 justify-center whitespace-nowrap bg-slate-100 py-2 px-3 hover:bg-slate-200 transition"
           @click="openPicker">
           <Icon name="lucide:calendar-days" class="h-5 w-5 text-menu-background" />
           <span class="text-xs font-medium text-slate-700 tabular-nums">{{ formattedDate }}</span>
