@@ -2,6 +2,7 @@
 import type { LeagueSlug } from '~/composables/useLeagueConfig'
 import { LEAGUE_SLUG_TO_ID } from '~/composables/useLeagueConfig'
 import StandingsTableVue from '~/components/Standings/StandingsTable.vue'
+import { getBusinessDate } from '~/utils/date'
 
 type StandingRow = {
   rank: number
@@ -41,7 +42,7 @@ const leagues: Array<{ id: LeagueSlug; name: string; country: string; logo: stri
 
 const currentLeague = computed(() => leagues.find((l) => l.id === selectedLeague.value))
 const currentLeagueId = computed(() => LEAGUE_SLUG_TO_ID[selectedLeague.value])
-const now = new Date()
+const now = getBusinessDate()
 const season = now.getUTCMonth() >= 6 ? now.getUTCFullYear() : now.getUTCFullYear() - 1
 
 const { data, pending, error, refresh } = useFetch<StandingsApiResponse>('/api/standings', {

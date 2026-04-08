@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { getBusinessDateString } from '~/utils/date'
+
 type ModelValue = string | Date
 
 const props = withDefaults(defineProps<{ modelValue?: ModelValue }>(), {
-  modelValue: () => new Date(),
+  modelValue: () => getBusinessDateString(),
 })
 
 const emit = defineEmits<{
@@ -25,16 +27,17 @@ function toYmdLocal(date: Date) {
 
 function parseYmdLocal(value: string) {
   const parts = value.split('-').map(Number)
-  const y = parts[0] || new Date().getFullYear()
-  const m = parts[1] || 1
-  const d = parts[2] || 1
+  const fallbackParts = getBusinessDateString().split('-').map(Number)
+  const y = parts[0] || fallbackParts[0] || new Date().getFullYear()
+  const m = parts[1] || fallbackParts[1] || 1
+  const d = parts[2] || fallbackParts[2] || 1
   return normalize(new Date(y, m - 1, d))
 }
 
 function asDate(val: ModelValue | undefined) {
-  if (!val) return normalize(new Date())
+  if (!val) return parseYmdLocal(getBusinessDateString())
   if (val instanceof Date) return normalize(val)
-  if (!YMD_RE.test(val)) return normalize(new Date())
+  if (!YMD_RE.test(val)) return parseYmdLocal(getBusinessDateString())
   return parseYmdLocal(val)
 }
 
@@ -124,7 +127,7 @@ const weeks = computed<CalendarCell[][]>(() => {
     cells.push({ date: null, isToday: false, isCurrentMonth: false, isSelected: false })
   }
 
-  const today = normalize(new Date())
+  const today = parseYmdLocal(getBusinessDateString())
   for (let day = 1; day <= dim; day++) {
     const d = new Date(monthStart)
     d.setDate(day)

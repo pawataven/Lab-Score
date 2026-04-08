@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import type { ApiFixture, FixtureApiResponse, LeagueGroup } from '~/types/fixture'
-import { toMatchModel } from '~/utils/match'
+import type { FixtureApiResponse, LeagueGroup } from '~/types/fixture'
+import { buildLeagueGroups } from '~/utils/fixtures'
+import { BUSINESS_TIME_ZONE, getBusinessDateString, getMillisecondsUntilNextBusinessDay } from '~/utils/date'
 
 import HomeFixturesListVue from '~/components/home/HomeFixturesList.vue'
 import HomeMenuSidebarVue from '~/components/home/HomeMenuSidebar.vue'
@@ -16,13 +17,13 @@ const leagueIdsForQuery = computed(() => {
 })
 
 const resolvedApiDate = computed(() =>
-  selectedDate.value === 'all' ? getBangkokCurrentDate() : selectedDate.value,
+  selectedDate.value === 'all' ? getBusinessDateString() : selectedDate.value,
 )
 
 const fetchQuery = computed(() => ({
   date: resolvedApiDate.value,
   leagues: leagueIdsForQuery.value.join(','),
-  timezone: 'Asia/Bangkok',
+  timezone: BUSINESS_TIME_ZONE,
 }))
 
 const { data, pending, error, refresh } = await useAsyncData<FixtureApiResponse>(
@@ -38,7 +39,7 @@ const { data, pending, error, refresh } = await useAsyncData<FixtureApiResponse>
 )
 
 const planMessage = computed(() => {
-  const msg = data.value?.errors?.plan
+  const msg = Array.isArray(data.value?.errors) ? '' : data.value?.errors?.plan
   if (typeof msg === 'string' && (msg.includes('Free') || msg.includes('access'))) {
     return 'ขออภัยไม่สามารถเรียกดูข้อมูลย้อนหลังหรือล่วงหน้าเกิน 3 วันได้ในขณะนี้'
   }
@@ -46,51 +47,25 @@ const planMessage = computed(() => {
 })
 
 const fixtures = computed<LeagueGroup[]>(() => {
-  if (!selectedLeagues.value.length) return []
-
-  const raw = data.value?.response
-  if (!Array.isArray(raw)) return []
-
-  const allowed = new Set<number>(selectedLeagueIds.value)
-  const groups = new Map<number, ApiFixture[]>()
-
-  for (const fx of raw) {
-    const leagueId = fx?.league?.id
-    if (typeof leagueId !== 'number' || !allowed.has(leagueId)) continue
-    if (!groups.has(leagueId)) groups.set(leagueId, [])
-    groups.get(leagueId)!.push(fx)
-  }
-
-  const result: LeagueGroup[] = []
-
-  for (const [leagueId, items] of groups.entries()) {
-    const first = items[0]
-    const matches = items.map(toMatchModel)
-    if (matches.length === 0) continue
-
-    const liveCount = matches.filter((m) => m.status === 'LIVE').length
-
-    result.push({
-      id: leagueId,
-      name: first?.league?.name ?? 'Unknown',
-      country: first?.league?.country ?? '',
-      season: first?.league?.season != null ? String(first.league.season) : '-',
-      logo: first?.league?.logo ?? '',
-      liveCount,
-      matches,
-    })
-  }
-
-  return result.sort((a, b) => b.liveCount - a.liveCount || b.matches.length - a.matches.length)
+  return buildLeagueGroups({
+    fixtures: data.value?.response,
+    leagueIds: selectedLeagueIds.value,
+    pageDate: resolvedApiDate.value,
+  })
 })
 
 const totalMatches = computed(() =>
   fixtures.value.reduce((acc, league) => acc + league.matches.length, 0),
 )
 
+function parseIsoDateLocal(value: string): Date {
+  const [year, month, day] = value.split('-').map(Number)
+  return new Date(year, (month || 1) - 1, day || 1)
+}
+
 const displayDateHeader = computed(() => {
   if (selectedDate.value === 'all') return 'โปรแกรมการแข่งขันทั้งหมด'
-  const date = new Date(selectedDate.value)
+  const date = parseIsoDateLocal(selectedDate.value)
   const options: Intl.DateTimeFormatOptions = {
     weekday: 'long',
     day: 'numeric',
@@ -108,6 +83,28 @@ const subtitleLine = computed(() => {
 
 function retryLoad() {
   void refresh()
+}
+
+if (import.meta.client) {
+  let rolloverTimer: ReturnType<typeof setTimeout> | undefined
+
+  const scheduleRollover = () => {
+    clearTimeout(rolloverTimer)
+    rolloverTimer = setTimeout(() => {
+      if (selectedDate.value === 'all') {
+        void refresh()
+      }
+      scheduleRollover()
+    }, getMillisecondsUntilNextBusinessDay())
+  }
+
+  onMounted(() => {
+    scheduleRollover()
+  })
+
+  onBeforeUnmount(() => {
+    clearTimeout(rolloverTimer)
+  })
 }
 </script>
 

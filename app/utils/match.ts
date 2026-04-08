@@ -1,4 +1,5 @@
 import type { ApiFixture, Match, MatchStatus } from '~/types/fixture'
+import { getMatchTimeLabel } from '~/utils/matchLabel'
 
 // Format time from ISO string to HH:mm
 export function formatTimeHHmm(iso: string): string {
@@ -14,9 +15,10 @@ function getMatchStatus(short: string): MatchStatus {
 }
 
 // Transform API fixture to Match model
-export function toMatchModel(fx: ApiFixture): Match {
+export function toMatchModel(fx: ApiFixture, pageDate?: string): Match {
   const short = fx.fixture?.status?.short ?? ''
   const elapsed = fx.fixture?.status?.elapsed
+  const matchDate = new Date(fx.fixture.date)
   const timeDisplay = short === 'NS'
     ? formatTimeHHmm(fx.fixture.date)
     : typeof elapsed === 'number'
@@ -28,6 +30,7 @@ export function toMatchModel(fx: ApiFixture): Match {
     timeDisplay,
     status: getMatchStatus(short),
     statusText: short,
+    label: pageDate ? getMatchTimeLabel(matchDate, pageDate) : null,
     home: {
       name: fx.teams?.home?.name ?? '-',
       score: fx.goals?.home ?? 0,

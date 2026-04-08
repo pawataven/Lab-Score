@@ -1,85 +1,81 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, watch, nextTick } from 'vue';
-import { getBangkokCurrentDate, addDays } from '~/utils/date';
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { addDays, getBusinessDateString } from '~/utils/date'
 
-// Props
 const props = withDefaults(defineProps<{
-  modelValue: string;
-  backDays?: number;
-  forwardDays?: number;
+  modelValue: string
+  backDays?: number
+  forwardDays?: number
 }>(), {
   backDays: 2,
-  forwardDays: 5
-});
+  forwardDays: 5,
+})
 
-// Emits
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
-}>();
+}>()
 
 interface DayItem {
-  fullDate: string;
-  dayName: string;
-  dateDisplay: string;
-  isToday: boolean;
+  fullDate: string
+  dayName: string
+  dateDisplay: string
+  isToday: boolean
 }
 
-// Logic: Generate Days
-const days = computed<DayItem[]>(() => {
-  const list: DayItem[] = [];
-  const thaiDays = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
-  const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+const thaiDays = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.']
+const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
 
-  const todayStr = getBangkokCurrentDate();
+const parseIsoAsLocalDate = (value: string): Date => {
+  const [year, month, day] = value.split('-').map(Number)
+  return new Date(year, (month || 1) - 1, day || 1)
+}
+
+const days = computed<DayItem[]>(() => {
+  const list: DayItem[] = []
+  const todayStr = getBusinessDateString()
 
   for (let i = -props.backDays; i <= props.forwardDays; i++) {
-    const currentISODate = addDays(todayStr, i);
-    const d = new Date(currentISODate); 
+    const currentISODate = addDays(todayStr, i)
+    const date = parseIsoAsLocalDate(currentISODate)
 
-    let dayNameStr = thaiDays[d.getDay()] || '';
-    if (i === 0) dayNameStr = 'วันนี้';
-    else if (i === -1) dayNameStr = 'เมื่อวาน';
-    else if (i === 1) dayNameStr = 'พรุ่งนี้';
+    let dayName = thaiDays[date.getDay()] || ''
+    if (i === 0) dayName = 'วันนี้'
+    else if (i === -1) dayName = 'เมื่อวาน'
+    else if (i === 1) dayName = 'พรุ่งนี้'
 
     list.push({
       fullDate: currentISODate,
-      dayName: dayNameStr,
-      dateDisplay: `${d.getDate()} ${thaiMonths[d.getMonth()] || ''}`,
-      isToday: i === 0
-    });
+      dayName,
+      dateDisplay: `${date.getDate()} ${thaiMonths[date.getMonth()] || ''}`,
+      isToday: i === 0,
+    })
   }
-  return list;
-});
 
-const selectDate = (val: string) => {
-  emit('update:modelValue', val);
-};
+  return list
+})
 
-// ---------------------------------------------------------
-// ✅ Logic นี้ถูกต้องแล้วครับ (Manual Scroll + Delay)
-// ---------------------------------------------------------
-const containerRef = ref<HTMLElement | null>(null);
+const selectDate = (value: string) => {
+  emit('update:modelValue', value)
+}
+
+const containerRef = ref<HTMLElement | null>(null)
 
 const scrollToActive = async (isSmooth = true) => {
-  await nextTick();
+  await nextTick()
 
   setTimeout(() => {
-    const container = containerRef.value;
-    const activeBtn = container?.querySelector('.is-selected') as HTMLElement;
+    const container = containerRef.value
+    const activeBtn = container?.querySelector('.is-selected') as HTMLElement | null
 
-    if (!container || !activeBtn) return;
+    if (!container || !activeBtn) return
 
-    const scrollLeft = activeBtn.offsetLeft - (container.clientWidth / 2) + (activeBtn.clientWidth / 2);
+    const scrollLeft = activeBtn.offsetLeft - (container.clientWidth / 2) + (activeBtn.clientWidth / 2)
+    container.scrollTo({ left: scrollLeft, behavior: isSmooth ? 'smooth' : 'auto' })
+  }, isSmooth ? 0 : 300)
+}
 
-    container.scrollTo({
-      left: scrollLeft,
-      behavior: isSmooth ? 'smooth' : 'auto'
-    });
-  }, isSmooth ? 0 : 300);
-};
-
-onMounted(() => scrollToActive(false));
-watch(() => props.modelValue, () => scrollToActive(true));
+onMounted(() => scrollToActive(false))
+watch(() => props.modelValue, () => scrollToActive(true))
 </script>
 
 <style scoped>
@@ -88,35 +84,30 @@ watch(() => props.modelValue, () => scrollToActive(true));
 </style>
 
 <template>
-  <div 
-    ref="containerRef" 
-    class="w-full overflow-x-auto pb-2 scrollbar-hide"
-    style="contain: content;"
-  >
-    <div class="flex items-center space-x-2 min-w-max px-2">
-      <button 
-        type="button" 
-        v-for="day in days" 
-        :key="day.fullDate" 
-        @click="selectDate(day.fullDate)"
-        class="flex flex-col items-center justify-center min-w-18 h-18 rounded-xl border transition-all duration-200 space-y-0.5 relative overflow-hidden"
+  <div ref="containerRef" class="w-full overflow-x-auto pb-2 scrollbar-hide" style="contain: content;">
+    <div class="flex min-w-max items-center space-x-2 px-2">
+      <button
+        v-for="day in days"
+        :key="day.fullDate"
+        type="button"
+        class="relative flex h-18 min-w-18 flex-col items-center justify-center space-y-0.5 overflow-hidden rounded-xl border transition-all duration-200"
         :class="[
           modelValue === day.fullDate
-            ? 'is-selected bg-[#f97316] text-gray-900 border-[#f97316] shadow-md scale-105 z-10'
-            : 'bg-slate-100 text-gray-700 border-gray-100 hover:border-gray-300 hover:bg-gray-50',
+            ? 'is-selected z-10 scale-105 border-[#f97316] bg-[#f97316] text-gray-900 shadow-md'
+            : 'border-gray-100 bg-slate-100 text-gray-700 hover:border-gray-300 hover:bg-gray-50',
           day.isToday && modelValue !== day.fullDate ? 'border-orange-400 bg-orange-50' : ''
         ]"
+        @click="selectDate(day.fullDate)"
       >
         <span class="text-xs font-medium" :class="modelValue === day.fullDate ? 'text-gray-900' : 'text-gray-700'">
           {{ day.dayName }}
         </span>
-        
+
         <span class="text-sm font-bold">
           {{ day.dateDisplay.split(' ')[0] }}
           <span class="text-[10px] font-normal">{{ day.dateDisplay.split(' ')[1] }}</span>
         </span>
       </button>
-
     </div>
   </div>
 </template>

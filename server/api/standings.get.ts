@@ -1,5 +1,6 @@
 import { createError, defineEventHandler, getQuery } from "h3"
 import { apiFootballFetch } from "../../app/utils/apiFootball"
+import { getBusinessDate } from "../../app/utils/date"
 
 type QueryParams = {
   league?: string
@@ -65,7 +66,7 @@ function parseLeagueId(rawLeague?: string): number {
 
 function parseSeason(rawSeason?: string): number {
   if (!rawSeason) {
-    const now = new Date()
+    const now = getBusinessDate()
     return now.getUTCMonth() >= 6 ? now.getUTCFullYear() : now.getUTCFullYear() - 1
   }
   const season = Number(rawSeason)

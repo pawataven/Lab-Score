@@ -1,27 +1,34 @@
-import { defineEventHandler, getQuery, createError } from "h3"
+import { createError, defineEventHandler, getQuery } from "h3"
 import { apiFootballFetch } from "../../app/utils/apiFootball"
+import { addDays, BUSINESS_DAY_CUTOFF_HOUR, BUSINESS_TIME_ZONE } from "../../app/utils/date"
 
-// --------------------------------------------------------
-// 1. Type Definitions (กำหนดหน้าตาข้อมูลที่ API ส่งกลับมา)
-// --------------------------------------------------------
 type QueryParams = {
   date?: string
   leagues?: string
   timezone?: string
 }
 
-// กำหนด Type ของ Response ให้ชัดเจน เพื่อให้ TypeScript รู้จัก
+type ProviderErrors = any[] | Record<string, any> | undefined
+
+type FixtureRecord = {
+  fixture?: {
+    id?: number
+    date?: string
+  }
+  league?: {
+    id?: number
+  }
+  [key: string]: any
+}
+
 type FixtureResponse = {
   get: string
   parameters: Record<string, any>
-  errors: any[] | Record<string, any>
+  errors?: ProviderErrors
   results: number
-  response: any[] // ข้อมูลแมตช์จะอยู่ในนี้
+  response: FixtureRecord[]
 }
 
-// --------------------------------------------------------
-// 2. Helper Functions
-// --------------------------------------------------------
 function validateDate(date?: string): string {
   if (!date) {
     throw createError({ statusCode: 400, statusMessage: "Missing 'date' parameter" })
@@ -36,74 +43,204 @@ function parseLeagueIds(leaguesStr?: string): number[] {
   if (!leaguesStr) return []
   return leaguesStr
     .split(",")
-    .map((s) => Number(s.trim()))
-    .filter((n) => Number.isFinite(n) && n > 0)
+    .map((value) => Number(value.trim()))
+    .filter((value) => Number.isFinite(value) && value > 0)
 }
 
-// --------------------------------------------------------
-// 3. Main Handler
-// --------------------------------------------------------
+function normalizeErrors(errors: ProviderErrors): Record<string, any> {
+  if (!errors) return {}
+  if (Array.isArray(errors)) {
+    return errors.length > 0 ? { list: errors } : {}
+  }
+  return errors
+}
+
+function hasProviderErrors(errors: ProviderErrors): boolean {
+  if (Array.isArray(errors)) return errors.length > 0
+  return !!(errors && Object.keys(errors).length > 0)
+}
+
+function mergeErrors(...items: ProviderErrors[]): Record<string, any> {
+  return items.reduce<Record<string, any>>((acc, item) => {
+    const normalized = normalizeErrors(item)
+
+    for (const [key, value] of Object.entries(normalized)) {
+      if (key === "list" && Array.isArray(value)) {
+        acc.list = [...(Array.isArray(acc.list) ? acc.list : []), ...value]
+        continue
+      }
+      acc[key] = value
+    }
+
+    return acc
+  }, {})
+}
+
+function dedupeFixtures(fixtures: FixtureRecord[]): FixtureRecord[] {
+  const seenFixtureIds = new Set<number>()
+  const result: FixtureRecord[] = []
+
+  for (const fixture of fixtures) {
+    const fixtureId = fixture.fixture?.id
+
+    if (typeof fixtureId === "number") {
+      if (seenFixtureIds.has(fixtureId)) continue
+      seenFixtureIds.add(fixtureId)
+    }
+
+    result.push(fixture)
+  }
+
+  return result
+}
+
+const formatterCache = new Map<string, Intl.DateTimeFormat>()
+
+function getFormatter(timeZone: string): Intl.DateTimeFormat {
+  const cached = formatterCache.get(timeZone)
+  if (cached) return cached
+
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  })
+
+  formatterCache.set(timeZone, formatter)
+  return formatter
+}
+
+function getZonedParts(input: string, timeZone: string) {
+  const parts = getFormatter(timeZone).formatToParts(new Date(input))
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+
+  return {
+    year: Number(values.year),
+    month: Number(values.month),
+    day: Number(values.day),
+    hour: Number(values.hour),
+  }
+}
+
+function toIsoDate(parts: { year: number; month: number; day: number }): string {
+  const month = String(parts.month).padStart(2, "0")
+  const day = String(parts.day).padStart(2, "0")
+  return `${parts.year}-${month}-${day}`
+}
+
+function filterFixturesForRequestedDate(
+  fixtures: FixtureRecord[],
+  requestedDate: string,
+  nextCalendarDate: string,
+  timeZone: string,
+): FixtureRecord[] {
+  return fixtures.filter((fixture) => {
+    const kickoff = fixture.fixture?.date
+    if (!kickoff) return false
+
+    const parts = getZonedParts(kickoff, timeZone)
+    const calendarDate = toIsoDate(parts)
+
+    if (calendarDate === requestedDate) {
+      return true
+    }
+
+    return calendarDate === nextCalendarDate && parts.hour < BUSINESS_DAY_CUTOFF_HOUR
+  })
+}
+
 export default defineEventHandler(async (event) => {
   const query = getQuery(event) as QueryParams
 
-  // 3.1 Validate & Prepare Data
-  const date = validateDate(query.date)
-  const targetTimezone = query.timezone || "UTC"
+  const businessDate = validateDate(query.date)
+  const targetTimezone = query.timezone || BUSINESS_TIME_ZONE
   const targetLeagueIds = parseLeagueIds(query.leagues)
+  const nextCalendarDate = addDays(businessDate, 1)
 
   try {
-    // 3.2 Call External API (Single Call Policy) 🎯
-    // [FIXED]: ใช้ 'as FixtureResponse' เพื่อบังคับบอก Type แทนการส่ง Generic
-    // วิธีนี้แก้ปัญหา 'Expected 0 type arguments' ได้ 100%
-    const data = (await apiFootballFetch("/fixtures", {
-      date: date,
+    const currentDayData = (await apiFootballFetch("/fixtures", {
+      date: businessDate,
       timezone: targetTimezone,
     })) as FixtureResponse
 
-    // 3.3 Check Errors from Provider
-    // ตอนนี้ TypeScript จะรู้จัก data.errors แล้ว ไม่ขึ้นแดง
-    const hasErrors = Array.isArray(data.errors)
-      ? data.errors.length > 0
-      : data.errors && Object.keys(data.errors).length > 0
+    const nextDayResult = await Promise.allSettled([
+      apiFootballFetch("/fixtures", {
+        date: nextCalendarDate,
+        timezone: targetTimezone,
+      }),
+    ])
 
-    if (hasErrors) {
-      console.error("[API-Football Error]:", data.errors)
-      // กรณีมี error จาก provider ส่ง array ว่างกลับไปก่อน กันเว็บพัง
+    const secondaryResult = nextDayResult[0]
+    const nextDayData = secondaryResult.status === "fulfilled"
+      ? secondaryResult.value as FixtureResponse
+      : undefined
+
+    const currentDayErrors = normalizeErrors(currentDayData.errors)
+    if (hasProviderErrors(currentDayErrors)) {
+      console.error("[API-Football Error]:", {
+        currentDayErrors,
+      })
+
       return {
         results: 0,
         response: [],
-        meta: { date, error: "Provider Error" }
+        errors: currentDayErrors,
+        meta: {
+          date: businessDate,
+          timezone: targetTimezone,
+          fetchDates: [businessDate],
+          error: "Provider Error",
+        },
       }
     }
 
-    let matches = data.response || []
+    const nextDayErrors = nextDayData?.errors
+    const canUseNextDay = secondaryResult.status === "fulfilled" && !hasProviderErrors(nextDayErrors)
+    const errors = canUseNextDay ? mergeErrors(currentDayErrors, nextDayErrors) : currentDayErrors
 
-    // 3.4 Server-Side Filtering ⚡
-    // กรองข้อมูลเฉพาะลีกที่ต้องการ ช่วยลดขนาด JSON
+    if (secondaryResult.status === "rejected" || hasProviderErrors(nextDayErrors)) {
+      console.warn("[API-Football Warning]: next-day fetch skipped", {
+        nextCalendarDate,
+        reason: secondaryResult.status === "rejected" ? secondaryResult.reason : nextDayErrors,
+      })
+    }
+
+    let matches = dedupeFixtures([
+      ...(currentDayData.response || []),
+      ...(canUseNextDay ? (nextDayData?.response || []) : []),
+    ])
+
+    matches = filterFixturesForRequestedDate(matches, businessDate, nextCalendarDate, targetTimezone)
+
     if (targetLeagueIds.length > 0) {
-      matches = matches.filter((match: any) => {
+      matches = matches.filter((match) => {
         const leagueId = match.league?.id
         return typeof leagueId === "number" && targetLeagueIds.includes(leagueId)
       })
     }
 
-    // 3.5 Return Optimized Response
     return {
       results: matches.length,
       response: matches,
+      errors,
       meta: {
-        date,
+        date: businessDate,
         timezone: targetTimezone,
-        source: "single-fetch" // flag ไว้เช็กได้ว่ามาจากโค้ดชุดใหม่
-      }
+        fetchDates: canUseNextDay ? [businessDate, nextCalendarDate] : [businessDate],
+        source: canUseNextDay ? "calendar-plus-early-next-day" : "calendar-day-with-fallback",
+      },
     }
-
   } catch (error: any) {
     console.error("[Server Error] Failed to fetch fixtures:", error)
     throw createError({
       statusCode: error.statusCode || 500,
-      statusMessage: "Internal Server Error",
-      data: error.message
+      statusMessage: error.statusMessage || "Internal Server Error",
+      data: error.data || error.message,
     })
   }
 })

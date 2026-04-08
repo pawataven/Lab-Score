@@ -13,6 +13,7 @@ export interface Match {
   timeDisplay: string
   status: MatchStatus
   statusText: string
+  label: string | null
   home: Team
   away: Team
 }
@@ -35,7 +36,7 @@ export interface LeagueConfig {
 
 // API Response types
 export interface FixtureApiResponse {
-  errors?: Record<string, any>
+  errors?: Record<string, any> | any[]
   response?: ApiFixture[]
   [k: string]: any
 }

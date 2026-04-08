@@ -10,7 +10,7 @@ import HomeLoadingSkeleton from '~/components/home/HomeLoadingSkeleton.vue'
 import HomeEmptyState from '~/components/home/HomeEmptyState.vue'
 
 // Composables
-const { leaguesUI, selectedLeagues, resetLeagues } = useLeagueConfig()
+const { leaguesUI, selectedLeagues, selectedLeagueIds, resetLeagues } = useLeagueConfig()
 const {
   date,
   statusFilter,
@@ -21,7 +21,7 @@ const {
   liveMatchCount,
   totalMatchCount,
   retry,
-} = useFixtures()
+} = useFixtures(selectedLeagueIds)
 </script>
 
 <template>

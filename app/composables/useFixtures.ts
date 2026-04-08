@@ -1,13 +1,14 @@
-import type { FixtureApiResponse, ApiFixture, LeagueGroup, StatusFilter } from '~/types/fixture'
-import { toMatchModel, filterMatchesByStatus } from '~/utils/match'
+import type { FixtureApiResponse, LeagueGroup, StatusFilter } from '~/types/fixture'
+import { buildLeagueGroups } from '~/utils/fixtures'
+import { BUSINESS_TIME_ZONE, getBusinessDateString, getMillisecondsUntilNextBusinessDay } from '~/utils/date'
 
-export function useFixtures() {
+export function useFixtures(selectedLeagueIds: Ref<number[]> | number[]) {
   const route = useRoute()
   const router = useRouter()
+  const leagueIdsRef = isRef(selectedLeagueIds) ? selectedLeagueIds : ref(selectedLeagueIds)
 
-  // Date from URL query or current Bangkok date
   const date = computed({
-    get: () => (route.query.date as string) || getBangkokCurrentDate(),
+    get: () => (route.query.date as string) || getBusinessDateString(),
     set: (newDate) => {
       if (newDate !== route.query.date) {
         router.replace({ query: { ...route.query, date: newDate } })
@@ -15,26 +16,18 @@ export function useFixtures() {
     },
   })
 
-  // Status filter
   const statusFilter = ref<StatusFilter>('all')
 
-  // Selected leagues from composable
-  const { selectedLeagueIds } = useLeagueConfig()
-
-  // Debounced fetch query
   const rawFetchQuery = computed(() => ({
     date: date.value,
-    leagues: selectedLeagueIds.value.join(','),
-    timezone: 'UTC',
+    leagues: leagueIdsRef.value.join(','),
+    timezone: BUSINESS_TIME_ZONE,
   }))
 
-  const debouncedQuery = useDebounce(rawFetchQuery, 500)
-
-  // Nonce for cache invalidation
+  const debouncedQuery = useDebounce(rawFetchQuery, 300)
   const nonce = ref(0)
-  const fetchKey = computed(() => `fixtures:${debouncedQuery.value.date}:${debouncedQuery.value.leagues}:UTC:${nonce.value}`)
+  const fetchKey = computed(() => `fixtures:${debouncedQuery.value.date}:${debouncedQuery.value.leagues}:${BUSINESS_TIME_ZONE}:${nonce.value}`)
 
-  // Fetch data
   const { data, pending, error, refresh } = useFetch<FixtureApiResponse>('/api/fixtures', {
     query: debouncedQuery,
     key: fetchKey,
@@ -43,16 +36,14 @@ export function useFixtures() {
     server: false,
   })
 
-  // Plan limit error handling
   const planMessage = computed(() => {
-    const msg = data.value?.errors?.plan
+    const msg = Array.isArray(data.value?.errors) ? '' : data.value?.errors?.plan
     if (typeof msg === 'string' && (msg.includes('Free') || msg.includes('access'))) {
-      return 'ขออภัยไม่สามารถเรียกดูข้อมูลย้อนหลังหรือล่วงหน้าเกิน 3 วันได้ในขณะนี้'
+      return 'ขออภัย ไม่สามารถเรียกดูข้อมูลย้อนหลังหรือล่วงหน้าเกินช่วงที่แพ็กเกจรองรับได้ในขณะนี้'
     }
     return typeof msg === 'string' ? msg : ''
   })
 
-  // Auto-adjust date when plan limit error suggests valid range
   const adjusting = ref(false)
 
   watchEffect(() => {
@@ -64,65 +55,49 @@ export function useFixtures() {
       if (date.value !== midDate) {
         adjusting.value = true
         date.value = midDate
-        setTimeout(() => (adjusting.value = false), 400)
+        setTimeout(() => {
+          adjusting.value = false
+        }, 400)
       }
     }
   })
 
-  function getMidDate(from: string, to: string): string {
-    const a = new Date(from + 'T00:00:00').getTime()
-    const b = new Date(to + 'T00:00:00').getTime()
-    const mid = new Date((a + b) / 2)
-    return formatDateToISO(mid)
+  if (import.meta.client) {
+    let rolloverTimer: ReturnType<typeof setTimeout> | undefined
+
+    const scheduleRollover = () => {
+      clearTimeout(rolloverTimer)
+      rolloverTimer = setTimeout(() => {
+        const nextBusinessDate = getBusinessDateString()
+        if (date.value !== nextBusinessDate) {
+          date.value = nextBusinessDate
+        }
+        nonce.value++
+        refresh()
+        scheduleRollover()
+      }, getMillisecondsUntilNextBusinessDay())
+    }
+
+    onMounted(() => {
+      scheduleRollover()
+    })
+
+    onBeforeUnmount(() => {
+      clearTimeout(rolloverTimer)
+    })
   }
 
-  // Transform fixtures data into league groups
   const fixturesData = computed<LeagueGroup[]>(() => {
-    const arr = Array.isArray(data.value?.response) ? data.value!.response! : []
-    const groups = new Map<number, ApiFixture[]>()
-
-    // Group fixtures by league
-    for (const fx of arr) {
-      const leagueId = fx?.league?.id
-      if (typeof leagueId !== 'number') continue
-      if (!selectedLeagueIds.value.includes(leagueId as any)) continue
-      if (!groups.has(leagueId)) groups.set(leagueId, [])
-      groups.get(leagueId)!.push(fx)
-    }
-
-    // Transform groups to LeagueGroup[]
-    const result: LeagueGroup[] = []
-
-    for (const [leagueId, items] of groups.entries()) {
-      const first = items[0]
-      let matches = items.map(toMatchModel)
-
-      // Apply status filter
-      if (statusFilter.value !== 'all') {
-        matches = filterMatchesByStatus(matches, statusFilter.value)
-      }
-
-      if (matches.length === 0) continue
-
-      const liveCount = matches.filter(m => m.status === 'LIVE').length
-
-      result.push({
-        id: leagueId,
-        name: first?.league?.name ?? 'Unknown',
-        country: first?.league?.country ?? '',
-        season: first?.league?.season ? String(first.league.season) : '-',
-        logo: first?.league?.logo ?? '',
-        liveCount,
-        matches,
-      })
-    }
-
-    // Sort: live first, then by match count
-    return result.sort((a, b) => (b.liveCount - a.liveCount) || (b.matches.length - a.matches.length))
+    return buildLeagueGroups({
+      fixtures: data.value?.response,
+      leagueIds: leagueIdsRef.value,
+      statusFilter: statusFilter.value,
+      pageDate: date.value,
+    })
   })
 
   const liveMatchCount = computed(() =>
-    fixturesData.value.reduce((sum, g) => sum + g.liveCount, 0)
+    fixturesData.value.reduce((sum, group) => sum + group.liveCount, 0)
   )
 
   const totalMatchCount = computed(() =>
@@ -147,7 +122,16 @@ export function useFixtures() {
   }
 }
 
-// Simple debounce composable
+function getMidDate(from: string, to: string): string {
+  const start = new Date(`${from}T00:00:00Z`).getTime()
+  const end = new Date(`${to}T00:00:00Z`).getTime()
+  const mid = new Date((start + end) / 2)
+  const year = mid.getUTCFullYear()
+  const month = String(mid.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(mid.getUTCDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 function useDebounce<T>(value: Ref<T>, delay: number): Ref<T> {
   const debounced = ref(value.value) as Ref<T>
   let timer: ReturnType<typeof setTimeout>
@@ -157,6 +141,10 @@ function useDebounce<T>(value: Ref<T>, delay: number): Ref<T> {
     timer = setTimeout(() => {
       debounced.value = newVal
     }, delay)
+  })
+
+  onBeforeUnmount(() => {
+    clearTimeout(timer)
   })
 
   return debounced

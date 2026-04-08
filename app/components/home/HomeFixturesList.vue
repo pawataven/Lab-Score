@@ -1,8 +1,19 @@
 <script setup lang="ts">
-// รับข้อมูล Fixtures เข้ามา
+import type { LeagueGroup } from '~/types/fixture'
+
+const labelClassMap: Record<string, string> = {
+  'คืนนี้': 'bg-orange-500 text-white ring-1 ring-orange-200',
+  'เช้ามืด': 'bg-indigo-500 text-white ring-1 ring-indigo-200',
+}
+
+function getLabelClass(label: string | null): string {
+  if (!label) return ''
+  return labelClassMap[label] ?? 'bg-slate-600 text-white'
+}
+
 defineProps<{
-  fixtures: any[];
-}>();
+  fixtures: LeagueGroup[]
+}>()
 </script>
 
 <template>
@@ -10,15 +21,13 @@ defineProps<{
     <div
       v-for="(league, index) in fixtures"
       :key="league.id"
-      class="league-wrapper bg-white rounded-lg md:rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+      class="league-wrapper overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm md:rounded-xl"
     >
       <div
-        class="flex items-center justify-between px-3 py-2 md:px-4 md:py-3 bg-gray-50/80 border-b border-gray-100 backdrop-blur-sm"
+        class="flex items-center justify-between border-b border-gray-100 bg-gray-50/80 px-3 py-2 backdrop-blur-sm md:px-4 md:py-3"
       >
         <div class="flex items-center gap-2 md:gap-3">
-          <div
-            class="w-6 h-6 md:w-8 md:h-8 flex items-center justify-center shrink-0"
-          >
+          <div class="flex h-6 w-6 shrink-0 items-center justify-center md:h-8 md:w-8">
             <NuxtImg
               v-if="league.logo"
               :src="league.logo"
@@ -26,32 +35,26 @@ defineProps<{
               quality="80"
               :loading="index === 0 ? 'eager' : 'lazy'"
               :fetchpriority="index === 0 ? 'high' : 'auto'"
-              class="w-full h-full object-contain"
+              class="h-full w-full object-contain"
               alt="league logo"
             />
-            <div v-else class="w-full h-full rounded-full bg-gray-200"></div>
+            <div v-else class="h-full w-full rounded-full bg-gray-200" />
           </div>
 
           <div class="min-w-0">
-            <h2
-              class="font-bold text-gray-800 uppercase text-xs md:text-base leading-tight truncate pr-2"
-            >
+            <h2 class="truncate pr-2 text-xs font-bold leading-tight text-gray-800 uppercase md:text-base">
               {{ league.name }}
             </h2>
-            <span
-              class="text-[10px] md:text-xs text-gray-500 font-medium block"
-            >
+            <span class="block text-[10px] font-medium text-gray-500 md:text-xs">
               {{ league.country }} • {{ league.season }}
             </span>
           </div>
         </div>
 
-        <div
-          class="flex items-center gap-2 text-[10px] md:text-xs font-medium shrink-0"
-        >
+        <div class="flex shrink-0 items-center gap-2 text-[10px] font-medium md:text-xs">
           <span
             v-if="league.liveCount > 0"
-            class="px-2 py-0.5 bg-orange-100 text-orange-600 rounded-full animate-pulse"
+            class="rounded-full bg-orange-100 px-2 py-0.5 text-orange-600 animate-pulse"
           >
             {{ league.liveCount }} สด
           </span>
@@ -62,13 +65,19 @@ defineProps<{
         <div
           v-for="match in league.matches"
           :key="match.id"
-          class="group relative flex items-center py-2 px-2 md:py-3 md:px-4 hover:bg-gray-50 transition-colors cursor-pointer select-none"
+          class="group relative flex cursor-pointer select-none items-center px-2 py-2 transition-colors hover:bg-gray-50 md:px-4 md:py-3"
         >
-          <div
-            class="w-14 md:w-20 shrink-0 flex flex-col items-center justify-center gap-1 mr-1 md:mr-2"
-          >
+          <div class="mr-1 flex w-14 shrink-0 flex-col items-center justify-center gap-1 md:mr-2 md:w-24">
             <span
-              class="text-xs md:text-sm font-bold tracking-tight"
+              v-if="match.label"
+              class="rounded-full px-2 py-0.5 text-[9px] font-semibold tracking-wide md:text-[10px]"
+              :class="getLabelClass(match.label)"
+            >
+              {{ match.label }}
+            </span>
+
+            <span
+              class="text-xs font-bold tracking-tight md:text-sm"
               :class="{
                 'text-[#f97316] animate-pulse': match.status === 'LIVE',
                 'text-green-700': match.status === 'FT',
@@ -79,34 +88,23 @@ defineProps<{
             </span>
 
             <span
-              class="px-1.5 py-0.5 rounded-sm text-[9px] md:text-[10px] font-bold border text-center w-full max-w-12 uppercase tracking-wider"
+              class="w-full max-w-12 rounded-sm border px-1.5 py-0.5 text-center text-[9px] font-bold uppercase tracking-wider md:text-[10px]"
               :class="{
-                'bg-orange-50 text-[#f97316] border-orange-100':
-                  match.status === 'LIVE',
-                'bg-green-50 text-green-700 border-green-100':
-                  match.status === 'FT',
-                'bg-gray-100 text-gray-800 border-gray-200':
-                  match.status === 'UPCOMING',
+                'bg-orange-50 text-[#f97316] border-orange-100': match.status === 'LIVE',
+                'bg-green-50 text-green-700 border-green-100': match.status === 'FT',
+                'bg-gray-100 text-gray-800 border-gray-200': match.status === 'UPCOMING',
               }"
             >
               {{ match.statusText }}
             </span>
           </div>
 
-          <div
-            class="flex-1 grid grid-cols-[1fr_auto_1fr] items-center gap-1 md:gap-3"
-          >
-            <div
-              class="flex items-center justify-end gap-1.5 md:gap-3 text-right overflow-hidden"
-            >
-              <span
-                class="text-xs md:text-base font-medium text-gray-900 truncate leading-tight"
-              >
+          <div class="grid flex-1 grid-cols-[1fr_auto_1fr] items-center gap-1 md:gap-3">
+            <div class="flex items-center justify-end gap-1.5 overflow-hidden text-right md:gap-3">
+              <span class="truncate text-xs font-medium leading-tight text-gray-900 md:text-base">
                 {{ match.home.name }}
               </span>
-              <div
-                class="w-6 h-6 md:w-9 md:h-9 flex items-center justify-center shrink-0"
-              >
+              <div class="flex h-6 w-6 shrink-0 items-center justify-center md:h-9 md:w-9">
                 <NuxtImg
                   v-if="match.home.logo"
                   :src="match.home.logo"
@@ -114,33 +112,29 @@ defineProps<{
                   quality="80"
                   :loading="index === 0 ? 'eager' : 'lazy'"
                   :fetchpriority="index === 0 ? 'high' : 'auto'"
-                  class="w-full h-full object-contain drop-shadow-sm"
+                  class="h-full w-full object-contain drop-shadow-sm"
                   alt="home"
                 />
               </div>
             </div>
 
-            <div class="w-10 md:w-16 flex justify-center items-center shrink-0">
+            <div class="flex w-10 shrink-0 items-center justify-center md:w-16">
               <div
                 v-if="match.status === 'UPCOMING'"
-                class="text-[10px] md:text-xs text-gray-900 font-medium"
+                class="text-[10px] font-medium text-gray-900 md:text-xs"
               >
                 VS
               </div>
               <div
                 v-else
-                class="text-sm md:text-xl font-bold text-gray-800 tracking-wider bg-slate-100/50 px-1.5 md:px-3 py-0.5 rounded-md min-w-8 text-center"
+                class="min-w-8 rounded-md bg-slate-100/50 px-1.5 py-0.5 text-center text-sm font-bold tracking-wider text-gray-800 md:px-3 md:text-xl"
               >
                 {{ match.home.score }}-{{ match.away.score }}
               </div>
             </div>
 
-            <div
-              class="flex items-center justify-start gap-1.5 md:gap-3 text-left overflow-hidden"
-            >
-              <div
-                class="w-6 h-6 md:w-9 md:h-9 flex items-center justify-center shrink-0"
-              >
+            <div class="flex items-center justify-start gap-1.5 overflow-hidden text-left md:gap-3">
+              <div class="flex h-6 w-6 shrink-0 items-center justify-center md:h-9 md:w-9">
                 <NuxtImg
                   v-if="match.away.logo"
                   :src="match.away.logo"
@@ -148,20 +142,18 @@ defineProps<{
                   quality="80"
                   :loading="index === 0 ? 'eager' : 'lazy'"
                   :fetchpriority="index === 0 ? 'high' : 'auto'"
-                  class="w-full h-full object-contain drop-shadow-sm"
+                  class="h-full w-full object-contain drop-shadow-sm"
                   alt="away"
                 />
               </div>
-              <span
-                class="text-xs md:text-base font-medium text-gray-900 truncate leading-tight"
-              >
+              <span class="truncate text-xs font-medium leading-tight text-gray-900 md:text-base">
                 {{ match.away.name }}
               </span>
             </div>
           </div>
 
           <div
-            class="hidden md:flex w-8 justify-end opacity-0 group-hover:opacity-100 transition-opacity absolute right-4"
+            class="absolute right-4 hidden w-8 justify-end opacity-0 transition-opacity group-hover:opacity-100 md:flex"
           >
             <button class="text-gray-400 hover:text-[#f97316]">
               <svg
