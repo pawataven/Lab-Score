@@ -2,6 +2,9 @@
 
 export const BUSINESS_TIME_ZONE = 'Asia/Bangkok'
 export const BUSINESS_DAY_CUTOFF_HOUR = 5
+// API-Football groups fixtures by calendar day in the requested timezone.
+// Using UTC+2 aligns a provider "day" with the app's 05:00 -> 04:59 business day in Bangkok.
+export const BUSINESS_QUERY_TIME_ZONE = 'Africa/Johannesburg'
 
 type ZonedDateParts = {
   year: number
