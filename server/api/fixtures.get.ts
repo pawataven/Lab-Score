@@ -1,6 +1,6 @@
 import { createError, defineEventHandler, getQuery } from "h3"
 import { apiFootballFetch } from "../../app/utils/apiFootball"
-import { BUSINESS_QUERY_TIME_ZONE, BUSINESS_TIME_ZONE, getBusinessDateString } from "../../app/utils/date"
+import { BUSINESS_QUERY_TIME_ZONE, BUSINESS_TIME_ZONE } from "../../app/utils/date"
 
 type QueryParams = {
   date?: string
@@ -60,6 +60,23 @@ function hasProviderErrors(errors: ProviderErrors): boolean {
   return !!(errors && Object.keys(errors).length > 0)
 }
 
+function mergeErrors(...items: ProviderErrors[]): Record<string, any> {
+  return items.reduce<Record<string, any>>((acc, item) => {
+    const normalized = normalizeErrors(item)
+
+    for (const [key, value] of Object.entries(normalized)) {
+      if (key === "list" && Array.isArray(value)) {
+        acc.list = [...(Array.isArray(acc.list) ? acc.list : []), ...value]
+        continue
+      }
+
+      acc[key] = value
+    }
+
+    return acc
+  }, {})
+}
+
 function dedupeFixtures(fixtures: FixtureRecord[]): FixtureRecord[] {
   const seenFixtureIds = new Set<number>()
   const result: FixtureRecord[] = []
@@ -82,40 +99,58 @@ export default defineEventHandler(async (event) => {
 
   const businessDate = validateDate(query.date)
   const targetTimezone = query.timezone || BUSINESS_TIME_ZONE
-  const todayBusinessDate = getBusinessDateString()
-  const providerQueryTimezone = targetTimezone === BUSINESS_TIME_ZONE
-    ? (businessDate > todayBusinessDate ? BUSINESS_QUERY_TIME_ZONE : BUSINESS_TIME_ZONE)
-    : targetTimezone
   const targetLeagueIds = parseLeagueIds(query.leagues)
+  const shouldMergeBusinessWindow = targetTimezone === BUSINESS_TIME_ZONE
+  const providerQueryTimezones = shouldMergeBusinessWindow
+    ? [BUSINESS_TIME_ZONE, BUSINESS_QUERY_TIME_ZONE]
+    : [targetTimezone]
 
   try {
-    const currentDayData = (await apiFootballFetch("/fixtures", {
-      date: businessDate,
-      timezone: providerQueryTimezone,
-    })) as FixtureResponse
+    const fetchResults = await Promise.allSettled(
+      providerQueryTimezones.map((timezone) =>
+        apiFootballFetch("/fixtures", {
+          date: businessDate,
+          timezone,
+        }) as Promise<FixtureResponse>
+      ),
+    )
 
-    const currentDayErrors = normalizeErrors(currentDayData.errors)
-    if (hasProviderErrors(currentDayErrors)) {
+    const fulfilledResponses = fetchResults
+      .filter((result): result is PromiseFulfilledResult<FixtureResponse> => result.status === "fulfilled")
+      .map((result) => result.value)
+
+    const successfulResponses = fulfilledResponses.filter((response) => !hasProviderErrors(response.errors))
+    const mergedErrors = mergeErrors(
+      ...fulfilledResponses.map((response) => response.errors),
+      ...fetchResults
+        .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+        .map((result) => ({ list: [String(result.reason)] })),
+    )
+
+    if (successfulResponses.length === 0) {
       console.error("[API-Football Error]:", {
-        currentDayErrors,
+        mergedErrors,
+        providerQueryTimezones,
       })
 
       return {
         results: 0,
         response: [],
-        errors: currentDayErrors,
+        errors: mergedErrors,
         meta: {
           date: businessDate,
           timezone: targetTimezone,
-          providerQueryTimezone,
-          fetchDates: [businessDate],
+          providerQueryTimezones,
+          fetchDates: providerQueryTimezones.map(() => businessDate),
           totalOnDate: 0,
           error: "Provider Error",
         },
       }
     }
 
-    let matches = dedupeFixtures(currentDayData.response || [])
+    let matches = dedupeFixtures(
+      successfulResponses.flatMap((response) => response.response || [])
+    )
 
     if (targetLeagueIds.length > 0) {
       matches = matches.filter((match) => {
@@ -127,14 +162,17 @@ export default defineEventHandler(async (event) => {
     return {
       results: matches.length,
       response: matches,
-      errors: currentDayErrors,
+      errors: mergedErrors,
       meta: {
         date: businessDate,
         timezone: targetTimezone,
-        providerQueryTimezone,
-        fetchDates: [businessDate],
-        totalOnDate: typeof currentDayData.results === "number" ? currentDayData.results : (currentDayData.response?.length || 0),
-        source: "business-day-single-request",
+        providerQueryTimezones,
+        fetchDates: providerQueryTimezones.map(() => businessDate),
+        totalOnDate: successfulResponses.reduce((sum, response) => {
+          const responseCount = typeof response.results === "number" ? response.results : (response.response?.length || 0)
+          return sum + responseCount
+        }, 0),
+        source: shouldMergeBusinessWindow ? "calendar-plus-business-window" : "calendar-day-single-request",
       },
     }
   } catch (error: any) {

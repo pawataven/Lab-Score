@@ -1,10 +1,11 @@
 import type { ApiFixture, Match, MatchStatus } from '~/types/fixture'
-import { getMatchTimeLabel } from '~/utils/matchLabel'
+import { getMatchCalendarDate, getMatchTimeLabel, getZonedDateParts } from '~/utils/matchLabel'
+import { BUSINESS_TIME_ZONE } from '~/utils/date'
 
 // Format time from ISO string to HH:mm
 export function formatTimeHHmm(iso: string): string {
-  const d = new Date(iso)
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  const parts = getZonedDateParts(new Date(iso), BUSINESS_TIME_ZONE)
+  return `${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}`
 }
 
 // Determine match status from API status short
@@ -15,10 +16,11 @@ function getMatchStatus(short: string): MatchStatus {
 }
 
 // Transform API fixture to Match model
-export function toMatchModel(fx: ApiFixture, pageDate?: string): Match {
+export function toMatchModel(fx: ApiFixture): Match {
   const short = fx.fixture?.status?.short ?? ''
   const elapsed = fx.fixture?.status?.elapsed
   const matchDate = new Date(fx.fixture.date)
+  const parts = getZonedDateParts(matchDate, BUSINESS_TIME_ZONE)
   const status = getMatchStatus(short)
   const timeDisplay = short === 'NS'
     ? formatTimeHHmm(fx.fixture.date)
@@ -28,10 +30,13 @@ export function toMatchModel(fx: ApiFixture, pageDate?: string): Match {
 
   return {
     id: fx.fixture.id,
+    kickoff: fx.fixture.date,
+    hour: parts.hour,
+    calendarDate: getMatchCalendarDate(matchDate),
     timeDisplay,
     status,
     statusText: short,
-    label: pageDate && status === 'UPCOMING' ? getMatchTimeLabel(matchDate, pageDate) : null,
+    label: getMatchTimeLabel(matchDate),
     home: {
       name: fx.teams?.home?.name ?? '-',
       score: fx.goals?.home ?? 0,

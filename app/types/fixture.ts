@@ -1,6 +1,7 @@
 // Types for fixture/match data
 
 export type MatchStatus = 'UPCOMING' | 'LIVE' | 'FT'
+export type TimeLabel = 'เช้ามืด' | 'เช้า' | 'บ่าย' | 'ค่ำ'
 
 export interface Team {
   name: string
@@ -10,12 +11,21 @@ export interface Team {
 
 export interface Match {
   id: number
+  kickoff: string
+  hour: number
+  calendarDate: string
   timeDisplay: string
   status: MatchStatus
   statusText: string
-  label: string | null
+  label: TimeLabel
   home: Team
   away: Team
+}
+
+export interface MatchSection {
+  key: string
+  title: string
+  matches: Match[]
 }
 
 export interface LeagueGroup {
@@ -26,6 +36,7 @@ export interface LeagueGroup {
   logo: string
   liveCount: number
   matches: Match[]
+  sections: MatchSection[]
 }
 
 export interface LeagueConfig {
