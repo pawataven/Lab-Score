@@ -41,8 +41,15 @@ async function submitForm() {
     form.name = ''
     form.email = ''
     form.message = ''
-  } catch (error: any) {
-    errorMessage.value = error?.data?.message || error?.message || 'Failed to send data to backend'
+  } catch (error: unknown) {
+    const fetchError = error as {
+      data?: {
+        message?: string
+      }
+      message?: string
+    }
+
+    errorMessage.value = fetchError.data?.message || fetchError.message || 'Failed to send data to backend'
   } finally {
     pending.value = false
   }

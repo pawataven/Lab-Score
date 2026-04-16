@@ -1,6 +1,13 @@
 import type { TimeLabel } from '~/types/fixture'
 import { BUSINESS_TIME_ZONE } from '~/utils/date'
 
+export const labelClassMap: Record<string, string> = {
+  'เช้ามืด': 'bg-slate-700 text-white ring-1 ring-slate-500',
+  'เช้า': 'bg-sky-400 text-white ring-1 ring-sky-200',
+  'บ่าย': 'bg-amber-500 text-white ring-1 ring-amber-200',
+  'ค่ำ': 'bg-orange-700 text-white ring-1 ring-orange-500',
+}
+
 type ZonedDateParts = {
   year: number
   month: number
@@ -8,6 +15,14 @@ type ZonedDateParts = {
   hour: number
   minute: number
 }
+
+export type MatchTimeLabel = {
+  label: string
+  labelWithDate: string
+  className: string
+}
+
+const THAI_MONTH_ABBREVIATIONS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
 
 const formatterCache = new Map<string, Intl.DateTimeFormat>()
 const shortDateFormatterCache = new Map<string, Intl.DateTimeFormat>()
@@ -64,6 +79,7 @@ export const toIsoDate = (parts: Pick<ZonedDateParts, 'year' | 'month' | 'day'>)
   return `${parts.year}-${pad2(parts.month)}-${pad2(parts.day)}`
 }
 
+<<<<<<< Updated upstream
 export function getTimeLabel(hour: number): TimeLabel {
   if (hour < 5) return 'เช้ามืด'
   if (hour < 12) return 'เช้า'
@@ -82,4 +98,37 @@ export function getMatchCalendarDate(matchDate: Date): string {
 
 export function formatSectionDate(date: Date): string {
   return getShortDateFormatter(BUSINESS_TIME_ZONE).format(date)
+=======
+const formatThaiShortDate = (parts: Pick<ZonedDateParts, 'day' | 'month'>): string => {
+  const month = THAI_MONTH_ABBREVIATIONS[parts.month - 1] ?? ''
+  return `${parts.day} ${month}`
+}
+
+function resolveLabel(hour: number): string {
+  if (hour <= 4) return 'เช้ามืด'
+  if (hour <= 11) return 'เช้า'
+  if (hour <= 16) return 'บ่าย'
+  return 'ค่ำ'
+}
+
+export function getMatchTimeLabel(
+  kickoffISO: string,
+  viewingDate: string,
+): MatchTimeLabel {
+  const kickoffDate = new Date(kickoffISO)
+  const parts = getZonedDateParts(kickoffDate, BUSINESS_TIME_ZONE)
+  const label = resolveLabel(parts.hour)
+  const kickoffDateString = toIsoDate(parts)
+
+  const labelWithDate =
+    label === 'เช้ามืด' && kickoffDateString !== viewingDate
+      ? `${label} (${formatThaiShortDate(parts)})`
+      : label
+
+  return {
+    label,
+    labelWithDate,
+    className: labelClassMap[label] ?? 'bg-slate-600 text-white',
+  }
+>>>>>>> Stashed changes
 }

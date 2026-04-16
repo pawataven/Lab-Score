@@ -1,36 +1,30 @@
 <script setup lang="ts">
 import { computed } from "vue"
+import type { LeagueConfig } from "~/types/fixture"
 
-// รับ Props
 const props = defineProps<{
-  leagues: any[]
-  modelValue: string[] // รับค่า ID ที่ถูกเลือก (slug เช่น "epl")
+  leagues: LeagueConfig[]
+  modelValue: string[]
 }>()
 
-//  เพิ่ม event reset
 const emit = defineEmits<{
   (e: "update:modelValue", val: string[]): void
   (e: "reset"): void
 }>()
 
-// จัดการ v-model
 const selectedIds = computed({
   get: () => props.modelValue,
   set: (val) => emit("update:modelValue", val),
 })
 
-// เลือกทั้งหมด (เลือกตามรายการที่ส่งเข้ามาใน leagues)
 function selectAll() {
-  const all = props.leagues.map((l: any) => l.id)
-  emit("update:modelValue", all)
+  emit("update:modelValue", props.leagues.map((league) => league.id))
 }
 
-//  ล้างการเลือก
 function clearAll() {
   emit("update:modelValue", [])
 }
 
-// รีเซ็ต (ให้แม่เป็นคนกำหนด default)
 function resetDefault() {
   emit("reset")
 }
@@ -63,7 +57,6 @@ function resetDefault() {
       </button>
     </div>
 
-    <!-- ปุ่มรีเซ็ตกลับค่าเริ่มต้น -->
     <button type="button"
       class="w-full text-xs bg-white border border-gray-300 cursor-pointer hover:bg-slate-50 py-2.5 rounded text-gray-600 transition mb-4"
       @click="resetDefault">

@@ -22,14 +22,15 @@ type StandingRow = {
 type StandingsApiResponse = {
   standings: StandingRow[]
   league: {
-    id: number
+    id: number | null
     name: string
     country: string
     logo: string
-    season: number
+    season: number | null
   } | null
 }
 
+const config = useRuntimeConfig()
 const selectedLeague = ref<LeagueSlug>('epl')
 
 const leagues: Array<{ id: LeagueSlug; name: string; country: string; logo: string }> = [
@@ -40,14 +41,14 @@ const leagues: Array<{ id: LeagueSlug; name: string; country: string; logo: stri
   { id: 'ligue1', name: 'Ligue 1', country: 'France', logo: 'https://media.api-sports.io/football/leagues/61.png' },
 ]
 
-const currentLeague = computed(() => leagues.find((l) => l.id === selectedLeague.value))
+const currentLeague = computed(() => leagues.find((league) => league.id === selectedLeague.value))
 const currentLeagueId = computed(() => LEAGUE_SLUG_TO_ID[selectedLeague.value])
 const now = getBusinessDate()
 const season = now.getUTCMonth() >= 6 ? now.getUTCFullYear() : now.getUTCFullYear() - 1
 
-const { data, pending, error, refresh } = useFetch<StandingsApiResponse>('/api/standings', {
+const { data, pending, error, refresh } = useFetch<StandingsApiResponse>(`${config.public.apiBase}/standings`, {
   query: computed(() => ({
-    league: String(currentLeagueId.value),  
+    league: String(currentLeagueId.value),
     season: String(season),
   })),
   key: computed(() => `standings:${selectedLeague.value}:${season}`),
@@ -60,6 +61,10 @@ const standings = computed(() => data.value?.standings ?? [])
 const leagueTitle = computed(() => data.value?.league?.name || currentLeague.value?.name || '')
 const leagueCountry = computed(() => data.value?.league?.country || currentLeague.value?.country || '')
 const leagueLogo = computed(() => data.value?.league?.logo || currentLeague.value?.logo || '')
+const errorMessage = computed(() => {
+  const value = error.value as { statusMessage?: string; message?: string } | null
+  return value?.statusMessage || value?.message || ''
+})
 </script>
 
 <style scoped>
@@ -74,7 +79,6 @@ const leagueLogo = computed(() => data.value?.league?.logo || currentLeague.valu
 
 <template>
   <div class="mx-auto max-w-7xl p-4 md:p-6 min-h-screen">
-    
     <div class="mb-6">
       <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
         <span class="p-2 bg-orange-100 rounded-lg text-[#f97316]">
@@ -118,7 +122,7 @@ const leagueLogo = computed(() => data.value?.league?.logo || currentLeague.valu
     </div>
 
     <div v-else-if="error" class="rounded-xl border border-red-200 bg-red-50 p-4 text-red-600">
-      โหลดตารางคะแนนไม่สำเร็จ: {{ (error as any)?.statusMessage || (error as any)?.message }}
+      โหลดตารางคะแนนไม่สำเร็จ: {{ errorMessage }}
       <button class="ml-3 underline" @click="refresh()">ลองใหม่</button>
     </div>
 
@@ -127,6 +131,5 @@ const leagueLogo = computed(() => data.value?.league?.logo || currentLeague.valu
     </div>
 
     <StandingsTableVue v-else :standings="standings" />
-
   </div>
 </template>

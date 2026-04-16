@@ -1,15 +1,11 @@
 <script setup lang="ts">
-import type { StatusFilter } from '~/types/fixture'
+import type { LeagueConfig, StatusFilter } from '~/types/fixture'
 
-// Components
 import HomeLiveMatchBarVue from '~/components/home/HomeLiveMatchBar.vue'
 import HomeMenuSidebarVue from '~/components/home/HomeMenuSidebar.vue'
 import HomeSubNavbarVue from '~/components/home/HomeSubNavbar.vue'
 import HomeFixturesListVue from '~/components/home/HomeFixturesList.vue'
-import HomeLoadingSkeleton from '~/components/home/HomeLoadingSkeleton.vue'
-import HomeEmptyState from '~/components/home/HomeEmptyState.vue'
 
-// Composables
 const { leaguesUI, selectedLeagues, selectedLeagueIds, resetLeagues } = useLeagueConfig()
 const {
   date,
@@ -22,6 +18,11 @@ const {
   totalMatchCount,
   retry,
 } = useFixtures(selectedLeagueIds)
+
+const errorMessage = computed(() => {
+  const value = error.value as { statusMessage?: string; message?: string } | null
+  return value?.statusMessage || value?.message || ''
+})
 </script>
 
 <template>
@@ -35,7 +36,7 @@ const {
   <div class="mx-auto max-w-7xl p-4 md:p-6">
     <div class="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 items-start">
       <aside class="hidden lg:block sticky top-30">
-        <HomeMenuSidebarVue :leagues="leaguesUI as any" v-model="selectedLeagues" @reset="resetLeagues()" />
+        <HomeMenuSidebarVue :leagues="leaguesUI as LeagueConfig[]" v-model="selectedLeagues" @reset="resetLeagues()" />
       </aside>
 
       <main class="w-full space-y-4">
@@ -64,7 +65,7 @@ const {
           </div>
 
           <div v-else-if="error" class="rounded-xl border p-4 text-red-600">
-            โหลดไม่สำเร็จ: {{ (error as any)?.statusMessage || (error as any)?.message }}
+            โหลดไม่สำเร็จ: {{ errorMessage }}
             <button class="ml-3 underline" @click="retry">ลองใหม่</button>
           </div>
 
@@ -97,7 +98,7 @@ const {
               <h3 class="text-lg font-semibold text-gray-900">ไม่มีโปรแกรมที่รอแข่งขัน</h3>
               <button @click="statusFilter = 'finished';"
                 class="mt-2 rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-slate-50 border border-slate-300">
-                ดูโปรแกรมที่จบเเล้ว
+                ดูโปรแกรมที่จบแล้ว
               </button>
             </div>
 
@@ -157,7 +158,6 @@ const {
               </div>
             </div>
           </template>
-
         </ClientOnly>
       </main>
     </div>

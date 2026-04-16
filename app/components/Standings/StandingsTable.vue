@@ -1,8 +1,22 @@
 <script setup lang="ts">
-// กำหนด Props รับข้อมูล
+type StandingRow = {
+  rank: number
+  name: string
+  logo: string
+  played: number
+  win: number
+  draw: number
+  lose: number
+  goalsFor: number
+  goalsAgainst: number
+  goalsDiff: number
+  points: number
+  form: string[]
+}
+
 defineProps<{
-  standings: any[]
-}>();
+  standings: StandingRow[]
+}>()
 </script>
 
 <template>
@@ -94,4 +108,3 @@ defineProps<{
     </div>
   </div>
 </template>
-

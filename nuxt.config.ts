@@ -108,14 +108,7 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
-    apiFootball: {
-      provider: process.env.API_FOOTBALL_PROVIDER,
-      baseUrl: process.env.API_FOOTBALL_BASE_URL,
-      key: process.env.API_FOOTBALL_KEY,
-      host: process.env.API_FOOTBALL_HOST,
-    },
     public: {
-      fixtureFixedDate: process.env.FIXTURE_FIXED_DATE || "",
       apiBase: process.env.NUXT_PUBLIC_API_BASE || "http://localhost:4000/api",
     },
   },
