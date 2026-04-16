@@ -17,7 +17,13 @@ export interface Match {
   timeDisplay: string
   status: MatchStatus
   statusText: string
+<<<<<<< Updated upstream
   label: TimeLabel
+=======
+  label: string | null
+  labelWithDate: string | null
+  labelClassName: string | null
+>>>>>>> Stashed changes
   home: Team
   away: Team
 }
@@ -45,11 +51,18 @@ export interface LeagueConfig {
   logo: string
 }
 
+export type ProviderErrorMap = Record<string, unknown>
+export type ProviderErrors = ProviderErrorMap | string[]
+
 // API Response types
 export interface FixtureApiResponse {
-  errors?: Record<string, any> | any[]
+  errors?: ProviderErrors
   response?: ApiFixture[]
-  [k: string]: any
+  results?: number
+  meta?: {
+    date: string
+    source: string
+  }
 }
 
 export interface ApiFixture {

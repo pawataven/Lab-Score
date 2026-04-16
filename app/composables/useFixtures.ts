@@ -3,6 +3,7 @@ import { buildLeagueGroups } from '~/utils/fixtures'
 import { BUSINESS_TIME_ZONE, getBusinessDateString, getMillisecondsUntilNextBusinessDay } from '~/utils/date'
 
 export function useFixtures(selectedLeagueIds: Ref<number[]> | number[]) {
+  const config = useRuntimeConfig()
   const route = useRoute()
   const router = useRouter()
   const leagueIdsRef = isRef(selectedLeagueIds) ? selectedLeagueIds : ref(selectedLeagueIds)
@@ -28,7 +29,7 @@ export function useFixtures(selectedLeagueIds: Ref<number[]> | number[]) {
   const nonce = ref(0)
   const fetchKey = computed(() => `fixtures:${debouncedQuery.value.date}:${debouncedQuery.value.leagues}:${BUSINESS_TIME_ZONE}:${nonce.value}`)
 
-  const { data, pending, error, refresh } = useFetch<FixtureApiResponse>('/api/fixtures', {
+  const { data, pending, error, refresh } = useFetch<FixtureApiResponse>(`${config.public.apiBase}/fixtures`, {
     query: debouncedQuery,
     key: fetchKey,
     watch: [debouncedQuery],

@@ -7,6 +7,7 @@ import HomeFixturesListVue from '~/components/home/HomeFixturesList.vue'
 import HomeMenuSidebarVue from '~/components/home/HomeMenuSidebar.vue'
 import DateNavigatorVue from '~/components/ui/DateNavigator.vue'
 
+const config = useRuntimeConfig()
 const { leaguesUI, selectedLeagues, selectedLeagueIds } = useLeagueConfig()
 
 const selectedDate = ref<string>('all')
@@ -29,7 +30,7 @@ const fetchQuery = computed(() => ({
 const { data, pending, error, refresh } = await useAsyncData<FixtureApiResponse>(
   'fixture-program-schedule',
   () =>
-    $fetch<FixtureApiResponse>('/api/fixtures', {
+    $fetch<FixtureApiResponse>(`${config.public.apiBase}/fixtures`, {
       query: fetchQuery.value,
     }),
   {
@@ -41,7 +42,7 @@ const { data, pending, error, refresh } = await useAsyncData<FixtureApiResponse>
 const planMessage = computed(() => {
   const msg = Array.isArray(data.value?.errors) ? '' : data.value?.errors?.plan
   if (typeof msg === 'string' && (msg.includes('Free') || msg.includes('access'))) {
-    return 'ขออภัยไม่สามารถเรียกดูข้อมูลย้อนหลังหรือล่วงหน้าเกิน 3 วันได้ในขณะนี้'
+    return 'ขออภัย ไม่สามารถเรียกดูข้อมูลย้อนหลังหรือช่วงล่วงหน้าเกิน 3 วันได้ในขณะนี้'
   }
   return typeof msg === 'string' ? msg : ''
 })
@@ -57,6 +58,11 @@ const fixtures = computed<LeagueGroup[]>(() => {
 const totalMatches = computed(() =>
   fixtures.value.reduce((acc, league) => acc + league.matches.length, 0),
 )
+
+const errorMessage = computed(() => {
+  const value = error.value as { statusMessage?: string; message?: string } | null
+  return value?.statusMessage || value?.message || 'ลองใหม่อีกครั้ง'
+})
 
 function parseIsoDateLocal(value: string): Date {
   const [year, month, day] = value.split('-').map(Number)
@@ -181,7 +187,7 @@ if (import.meta.client) {
             โหลดข้อมูลไม่สำเร็จ
           </p>
           <p class="mt-1 text-sm opacity-90">
-            {{ (error as any)?.statusMessage || (error as any)?.message || 'ลองใหม่อีกครั้ง' }}
+            {{ errorMessage }}
           </p>
           <button
             type="button"
