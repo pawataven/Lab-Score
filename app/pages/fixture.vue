@@ -26,10 +26,12 @@ const fetchQuery = computed(() => ({
   timezone: BUSINESS_TIME_ZONE,
 }))
 
+const config = useRuntimeConfig()
+
 const { data, pending, error, refresh } = await useAsyncData<FixtureApiResponse>(
   'fixture-program-schedule',
   () =>
-    $fetch<FixtureApiResponse>('/api/fixtures', {
+    $fetch<FixtureApiResponse>(`${config.public.apiBase}/fixtures`, {
       query: fetchQuery.value,
     }),
   {

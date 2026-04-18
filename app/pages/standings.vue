@@ -45,9 +45,11 @@ const currentLeagueId = computed(() => LEAGUE_SLUG_TO_ID[selectedLeague.value])
 const now = getBusinessDate()
 const season = now.getUTCMonth() >= 6 ? now.getUTCFullYear() : now.getUTCFullYear() - 1
 
-const { data, pending, error, refresh } = useFetch<StandingsApiResponse>('/api/standings', {
+const config = useRuntimeConfig()
+
+const { data, pending, error, refresh } = useFetch<StandingsApiResponse>(`${config.public.apiBase}/standings`, {
   query: computed(() => ({
-    league: String(currentLeagueId.value),  
+    league: String(currentLeagueId.value),
     season: String(season),
   })),
   key: computed(() => `standings:${selectedLeague.value}:${season}`),
