@@ -1,6 +1,5 @@
-// Types for fixture/match data
-
 export type MatchStatus = 'UPCOMING' | 'LIVE' | 'FT'
+export type StatusFilter = 'all' | 'live' | 'upcoming' | 'finished'
 export type TimeLabel = 'เช้ามืด' | 'เช้า' | 'บ่าย' | 'ค่ำ'
 
 export interface Team {
@@ -17,13 +16,9 @@ export interface Match {
   timeDisplay: string
   status: MatchStatus
   statusText: string
-<<<<<<< Updated upstream
-  label: TimeLabel
-=======
-  label: string | null
+  label: TimeLabel | null
   labelWithDate: string | null
   labelClassName: string | null
->>>>>>> Stashed changes
   home: Team
   away: Team
 }
@@ -54,7 +49,6 @@ export interface LeagueConfig {
 export type ProviderErrorMap = Record<string, unknown>
 export type ProviderErrors = ProviderErrorMap | string[]
 
-// API Response types
 export interface FixtureApiResponse {
   errors?: ProviderErrors
   response?: ApiFixture[]
@@ -90,5 +84,3 @@ export interface ApiFixture {
     away?: number
   }
 }
-
-export type StatusFilter = 'all' | 'live' | 'upcoming' | 'finished'

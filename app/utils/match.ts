@@ -1,65 +1,51 @@
 import type { ApiFixture, Match, MatchStatus } from '~/types/fixture'
-import { getMatchCalendarDate, getMatchTimeLabel, getZonedDateParts } from '~/utils/matchLabel'
 import { BUSINESS_TIME_ZONE } from '~/utils/date'
+import { getMatchCalendarDate, getMatchTimeLabel, getZonedDateParts } from '~/utils/matchLabel'
 
-// Format time from ISO string to HH:mm
 export function formatTimeHHmm(iso: string): string {
-<<<<<<< Updated upstream
-  const parts = getZonedDateParts(new Date(iso), BUSINESS_TIME_ZONE)
-  return `${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}`
-=======
   const formatter = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Bangkok',
+    timeZone: BUSINESS_TIME_ZONE,
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',
   })
 
   return formatter.format(new Date(iso))
->>>>>>> Stashed changes
 }
 
-// Determine match status from API status short
 function getMatchStatus(short: string): MatchStatus {
   if (short === 'NS') return 'UPCOMING'
   if (['FT', 'AET', 'PEN'].includes(short)) return 'FT'
   return 'LIVE'
 }
 
-// Transform API fixture to Match model
-export function toMatchModel(fx: ApiFixture): Match {
+export function toMatchModel(fx: ApiFixture, pageDate?: string): Match {
   const short = fx.fixture?.status?.short ?? ''
   const elapsed = fx.fixture?.status?.elapsed
-<<<<<<< Updated upstream
-  const matchDate = new Date(fx.fixture.date)
-  const parts = getZonedDateParts(matchDate, BUSINESS_TIME_ZONE)
-=======
->>>>>>> Stashed changes
+  const kickoff = fx.fixture.date
+  const kickoffDate = new Date(kickoff)
   const status = getMatchStatus(short)
-  const labelInfo = pageDate && status === 'UPCOMING'
-    ? getMatchTimeLabel(fx.fixture.date, pageDate)
+  const parts = getZonedDateParts(kickoffDate, BUSINESS_TIME_ZONE)
+  const labelInfo = status === 'UPCOMING'
+    ? getMatchTimeLabel(kickoff, pageDate)
     : null
   const timeDisplay = short === 'NS'
-    ? formatTimeHHmm(fx.fixture.date)
+    ? formatTimeHHmm(kickoff)
     : typeof elapsed === 'number'
       ? `${elapsed}'`
       : short || '-'
 
   return {
     id: fx.fixture.id,
-    kickoff: fx.fixture.date,
+    kickoff,
     hour: parts.hour,
-    calendarDate: getMatchCalendarDate(matchDate),
+    calendarDate: getMatchCalendarDate(kickoffDate),
     timeDisplay,
     status,
     statusText: short,
-<<<<<<< Updated upstream
-    label: getMatchTimeLabel(matchDate),
-=======
     label: labelInfo?.label ?? null,
     labelWithDate: labelInfo?.labelWithDate ?? null,
     labelClassName: labelInfo?.className ?? null,
->>>>>>> Stashed changes
     home: {
       name: fx.teams?.home?.name ?? '-',
       score: fx.goals?.home ?? 0,
@@ -73,11 +59,10 @@ export function toMatchModel(fx: ApiFixture): Match {
   }
 }
 
-// Filter matches by status
 export function filterMatchesByStatus(matches: Match[], filter: string): Match[] {
   if (filter === 'all') return matches
-  if (filter === 'live') return matches.filter(m => m.status === 'LIVE')
-  if (filter === 'upcoming') return matches.filter(m => m.status === 'UPCOMING')
-  if (filter === 'finished') return matches.filter(m => m.status === 'FT')
+  if (filter === 'live') return matches.filter((match) => match.status === 'LIVE')
+  if (filter === 'upcoming') return matches.filter((match) => match.status === 'UPCOMING')
+  if (filter === 'finished') return matches.filter((match) => match.status === 'FT')
   return matches
 }

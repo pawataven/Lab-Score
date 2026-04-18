@@ -1,7 +1,7 @@
 import type { ApiFixture, LeagueGroup, Match, MatchSection, StatusFilter } from '~/types/fixture'
 import { addDays, getBusinessDateString } from '~/utils/date'
-import { formatSectionDate } from '~/utils/matchLabel'
 import { filterMatchesByStatus, toMatchModel } from '~/utils/match'
+import { formatSectionDate } from '~/utils/matchLabel'
 
 type BuildLeagueGroupsOptions = {
   fixtures?: ApiFixture[] | null
@@ -35,8 +35,8 @@ export function buildLeagueGroups({
   for (const [leagueId, items] of groups.entries()) {
     const first = items[0]
     let matches = items
-      .map((item) => toMatchModel(item))
-      .sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime())
+      .map((item) => toMatchModel(item, pageDate))
+      .sort((left, right) => new Date(left.kickoff).getTime() - new Date(right.kickoff).getTime())
 
     if (statusFilter !== 'all') {
       matches = filterMatchesByStatus(matches, statusFilter)
@@ -58,7 +58,7 @@ export function buildLeagueGroups({
     })
   }
 
-  return result.sort((a, b) => (b.liveCount - a.liveCount) || (b.matches.length - a.matches.length))
+  return result.sort((left, right) => (right.liveCount - left.liveCount) || (right.matches.length - left.matches.length))
 }
 
 function buildMatchSections(matches: Match[], pageDate?: string): MatchSection[] {
@@ -93,8 +93,8 @@ function getMatchSection(
 ): Pick<MatchSection, 'key' | 'title'> {
   if (!pageDate) {
     return {
-      key: `time:${match.label}`,
-      title: match.label,
+      key: `time:${match.label ?? 'all'}`,
+      title: match.label ?? 'ทั้งหมด',
     }
   }
 
@@ -113,7 +113,7 @@ function getMatchSection(
   }
 
   return {
-    key: `time:${match.label}`,
-    title: match.label,
+    key: `time:${match.label ?? 'all'}`,
+    title: match.label ?? 'ทั้งหมด',
   }
 }

@@ -162,6 +162,42 @@ Output includes:
 - `labelWithDate`
 - `className`
 
+## Fixture Section UI Contract
+
+Defined across:
+
+- [`app/utils/fixtures.ts`](../app/utils/fixtures.ts)
+- [`app/utils/match.ts`](../app/utils/match.ts)
+- [`app/utils/matchLabel.ts`](../app/utils/matchLabel.ts)
+- [`app/components/home/HomeFixturesList.vue`](../app/components/home/HomeFixturesList.vue)
+
+This sectioning behavior is an intentional UI requirement and should be preserved.
+
+Expected grouping behavior:
+
+- Fixtures are grouped by league first
+- Inside each league, matches are grouped into visible sections
+- Section titles are contextual Thai labels such as:
+  - `ทั้งหมด`
+  - `คืนนี้`
+  - `เช้ามืด (20 เม.ย.)`
+  - `เช้า`
+  - `บ่าย`
+  - `ค่ำ`
+
+Expected card behavior:
+
+- Each match row shows a time-of-day badge on the left
+- The badge color must come from `labelClassMap`
+- Upcoming matches may show `labelWithDate` instead of only the short label
+- Section headers and left-side badges must stay visually aligned with the current fixtures layout
+
+Important rule:
+
+- Do not flatten all matches into a single unsectioned list unless product requirements explicitly change
+- Do not remove section headers like `ค่ำ`, `คืนนี้`, or `เช้ามืด (20 เม.ย.)`
+- If match grouping changes, update `buildMatchSections()` instead of patching the template ad hoc
+
 ## Runtime Configuration
 
 Defined in [`nuxt.config.ts`](../nuxt.config.ts).

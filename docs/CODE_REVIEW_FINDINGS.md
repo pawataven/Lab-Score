@@ -141,6 +141,33 @@ npm run dev
 - Do not move provider logic into controllers
 - Do not add direct external football API calls in frontend
 - Do not hardcode provider selection in UI code
+- Do not remove fixture section headers such as `ทั้งหมด`, `คืนนี้`, `ค่ำ`, or `เช้ามืด (20 เม.ย.)`
+- Do not collapse the fixtures UI into a flat list without section grouping
+- If the fixtures left-side badge or section-title behavior changes, treat it as a product/UI change and update docs first
+
+## Fixture UI Invariant
+
+The current fixtures UI is intentionally sectioned.
+
+Required behavior:
+
+- group by league
+- then group within each league by contextual Thai section headers
+- preserve the left-side badge + kickoff time + status stack
+
+Examples of expected section labels:
+
+- `ทั้งหมด`
+- `คืนนี้`
+- `ค่ำ`
+- `เช้ามืด (20 เม.ย.)`
+
+Primary implementation files:
+
+- `Lab-Score/app/utils/fixtures.ts`
+- `Lab-Score/app/utils/match.ts`
+- `Lab-Score/app/utils/matchLabel.ts`
+- `Lab-Score/app/components/home/HomeFixturesList.vue`
 
 ## Reference Docs
 

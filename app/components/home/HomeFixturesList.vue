@@ -1,20 +1,6 @@
 <script setup lang="ts">
 import type { LeagueGroup } from '~/types/fixture'
 
-<<<<<<< Updated upstream
-const labelClassMap: Record<string, string> = {
-  'เช้ามืด': 'bg-slate-700 text-white ring-1 ring-slate-500',   // เกือบดำ = ดึก/มืด
-  'เช้า': 'bg-sky-400 text-white ring-1 ring-sky-200',           // ฟ้าสว่าง = เช้า
-  'บ่าย': 'bg-amber-500 text-white ring-1 ring-amber-200',       // ส้ม = แดด
-  'ค่ำ': 'bg-orange-700 text-white ring-1 ring-orange-500',      // น้ำตาลส้ม = พระอาทิตย์ตก
-}
-
-function getLabelClass(label: string): string {
-  return labelClassMap[label] ?? 'bg-slate-600 text-white'
-}
-
-=======
->>>>>>> Stashed changes
 defineProps<{
   fixtures: LeagueGroup[]
 }>()
@@ -27,9 +13,7 @@ defineProps<{
       :key="league.id"
       class="league-wrapper overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm md:rounded-xl"
     >
-      <div
-        class="flex items-center justify-between border-b border-gray-100 bg-gray-50/80 px-3 py-2 backdrop-blur-sm md:px-4 md:py-3"
-      >
+      <div class="flex items-center justify-between border-b border-gray-100 bg-gray-50/80 px-3 py-2 backdrop-blur-sm md:px-4 md:py-3">
         <div class="flex items-center gap-2 md:gap-3">
           <div class="flex h-6 w-6 shrink-0 items-center justify-center md:h-8 md:w-8">
             <NuxtImg
@@ -46,7 +30,7 @@ defineProps<{
           </div>
 
           <div class="min-w-0">
-            <h2 class="truncate pr-2 text-xs font-bold leading-tight text-gray-800 uppercase md:text-base">
+            <h2 class="truncate pr-2 text-xs font-bold uppercase leading-tight text-gray-800 md:text-base">
               {{ league.name }}
             </h2>
             <span class="block text-[10px] font-medium text-gray-500 md:text-xs">
@@ -58,7 +42,7 @@ defineProps<{
         <div class="flex shrink-0 items-center gap-2 text-[10px] font-medium md:text-xs">
           <span
             v-if="league.liveCount > 0"
-            class="rounded-full bg-orange-100 px-2 py-0.5 text-orange-600 animate-pulse"
+            class="animate-pulse rounded-full bg-orange-100 px-2 py-0.5 text-orange-600"
           >
             {{ league.liveCount }} สด
           </span>
@@ -71,41 +55,8 @@ defineProps<{
           :key="section.key"
           class="border-t border-gray-100 first:border-t-0"
         >
-<<<<<<< Updated upstream
           <div class="bg-slate-50 px-3 py-2 text-xs font-semibold tracking-wide text-slate-600 md:px-4">
             {{ section.title }}
-=======
-          <div class="mr-1 flex w-14 shrink-0 flex-col items-center justify-center gap-1 md:mr-2 md:w-24">
-            <span
-              v-if="match.labelWithDate"
-              class="rounded-full px-2 py-0.5 text-[9px] font-semibold tracking-wide md:text-[10px]"
-              :class="match.labelClassName ?? 'bg-slate-600 text-white'"
-            >
-              {{ match.labelWithDate }}
-            </span>
-
-            <span
-              class="text-xs font-bold tracking-tight md:text-sm"
-              :class="{
-                'text-[#f97316] animate-pulse': match.status === 'LIVE',
-                'text-green-700': match.status === 'FT',
-                'text-gray-800': match.status === 'UPCOMING',
-              }"
-            >
-              {{ match.timeDisplay }}
-            </span>
-
-            <span
-              class="w-full max-w-12 rounded-sm border px-1.5 py-0.5 text-center text-[9px] font-bold uppercase tracking-wider md:text-[10px]"
-              :class="{
-                'bg-orange-50 text-[#f97316] border-orange-100': match.status === 'LIVE',
-                'bg-green-50 text-green-700 border-green-100': match.status === 'FT',
-                'bg-gray-100 text-gray-800 border-gray-200': match.status === 'UPCOMING',
-              }"
-            >
-              {{ match.statusText }}
-            </span>
->>>>>>> Stashed changes
           </div>
 
           <div class="divide-y divide-gray-100">
@@ -116,16 +67,17 @@ defineProps<{
             >
               <div class="mr-1 flex w-14 shrink-0 flex-col items-center justify-center gap-1 md:mr-2 md:w-24">
                 <span
+                  v-if="match.labelWithDate"
                   class="rounded-full px-2 py-0.5 text-[9px] font-semibold tracking-wide md:text-[10px]"
-                  :class="getLabelClass(match.label)"
+                  :class="match.labelClassName ?? 'bg-slate-600 text-white'"
                 >
-                  {{ match.label }}
+                  {{ match.labelWithDate }}
                 </span>
 
                 <span
                   class="text-xs font-bold tracking-tight md:text-sm"
                   :class="{
-                    'text-[#f97316] animate-pulse': match.status === 'LIVE',
+                    'animate-pulse text-[#f97316]': match.status === 'LIVE',
                     'text-green-700': match.status === 'FT',
                     'text-gray-800': match.status === 'UPCOMING',
                   }"
@@ -136,9 +88,9 @@ defineProps<{
                 <span
                   class="w-full max-w-12 rounded-sm border px-1.5 py-0.5 text-center text-[9px] font-bold uppercase tracking-wider md:text-[10px]"
                   :class="{
-                    'bg-orange-50 text-[#f97316] border-orange-100': match.status === 'LIVE',
-                    'bg-green-50 text-green-700 border-green-100': match.status === 'FT',
-                    'bg-gray-100 text-gray-800 border-gray-200': match.status === 'UPCOMING',
+                    'border-orange-100 bg-orange-50 text-[#f97316]': match.status === 'LIVE',
+                    'border-green-100 bg-green-50 text-green-700': match.status === 'FT',
+                    'border-gray-200 bg-gray-100 text-gray-800': match.status === 'UPCOMING',
                   }"
                 >
                   {{ match.statusText }}
@@ -198,9 +150,7 @@ defineProps<{
                 </div>
               </div>
 
-              <div
-                class="absolute right-4 hidden w-8 justify-end opacity-0 transition-opacity group-hover:opacity-100 md:flex"
-              >
+              <div class="absolute right-4 hidden w-8 justify-end opacity-0 transition-opacity group-hover:opacity-100 md:flex">
                 <button class="text-gray-400 hover:text-[#f97316]">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
